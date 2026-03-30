@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:budgie_flutter/main.dart';
+import 'package:budgie_flutter/features/planner/domain/allocation.dart';
+import 'package:budgie_flutter/features/planner/domain/planner_models.dart';
 
 void main() {
   test('calculateAllocation distributes weighted remainder', () {
