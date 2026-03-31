@@ -212,27 +212,44 @@ class PlannerScreen extends StatelessWidget {
               ),
             ],
           ),
-          bottomNavigationBar: Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-              child: NavigationBar(
-                selectedIndex: vm.activeTab,
-                destinations: const [
-                  NavigationDestination(icon: Icon(Icons.savings), label: 'Planner'),
-                  NavigationDestination(icon: Icon(Icons.analytics), label: 'Analytics'),
-                ],
-                onDestinationSelected: vm.setTab,
+          bottomNavigationBar: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+              child: SizedBox(
+                height: 84,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 22),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.xl),
+                        child: NavigationBar(
+                          height: 56,
+                          selectedIndex: vm.activeTab,
+                          destinations: const [
+                            NavigationDestination(icon: Icon(Icons.savings), label: 'Planner'),
+                            NavigationDestination(icon: Icon(Icons.analytics), label: 'Analytics'),
+                          ],
+                          onDestinationSelected: vm.setTab,
+                        ),
+                      ),
+                    ),
+                    if (vm.isHydrated && vm.activeTab == 0)
+                      Positioned(
+                        top: -18,
+                        child: FloatingActionButton(
+                          onPressed: () => _showQuickDailyExpenseDialog(context, vm),
+                          child: const Icon(Icons.add),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
-          floatingActionButton: vm.isHydrated && vm.activeTab == 0
-              ? FloatingActionButton(
-                  onPressed: () => _showQuickDailyExpenseDialog(context, vm),
-                  child: const Icon(Icons.add),
-                )
-              : null,
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },
     );
@@ -396,6 +413,17 @@ class _PlannerOverview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _OverviewHeroCard(
+            monthLabel: 'Month #${vm.monthsProcessed}',
+            title: 'Monthly snapshot',
+            value: vm.asCurrency(vm.totalSavingsWithCurrentExcess),
+            subtitle: 'Total position after expenses and current month excess.',
+            healthLabel: healthLabel,
+            healthColor: healthColor,
+            savingsRate: savingsRate,
+            expenseRatio: expenseRatio,
+          ),
+          const SizedBox(height: AppSpacing.md),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
@@ -403,21 +431,21 @@ class _PlannerOverview extends StatelessWidget {
               SizedBox(
                 width: cardWidth,
                 child: _KpiTile(
-                  label: 'Pool',
+                  label: 'Monthly Pool',
                   value: vm.asCurrency(vm.monthlyPool),
                 ),
               ),
               SizedBox(
                 width: cardWidth,
                 child: _KpiTile(
-                  label: 'Saved',
+                  label: 'Total Saved',
                   value: vm.asCurrency(vm.totalSavingsWithCurrentExcess),
                 ),
               ),
               SizedBox(
                 width: cardWidth,
                 child: _KpiTile(
-                  label: 'Spent',
+                  label: 'Purchase Spend',
                   value: vm.asCurrency(vm.spentOnPurchases),
                 ),
               ),
@@ -567,13 +595,21 @@ class _OverviewStatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 10, color: color),
+          ),
           const SizedBox(width: AppSpacing.xs),
           Text(
             '$label: $value',
@@ -667,6 +703,128 @@ class _OverviewSplitBar extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _OverviewHeroCard extends StatelessWidget {
+  const _OverviewHeroCard({
+    required this.monthLabel,
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.healthLabel,
+    required this.healthColor,
+    required this.savingsRate,
+    required this.expenseRatio,
+  });
+
+  final String monthLabel;
+  final String title;
+  final String value;
+  final String subtitle;
+  final String healthLabel;
+  final Color healthColor;
+  final double savingsRate;
+  final double expenseRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return _GlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.panel),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        monthLabel,
+                        style: text.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        title,
+                        style: text.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        subtitle,
+                        style: text.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.insights_outlined,
+                    color: scheme.primary,
+                    size: 22,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                _OverviewStatusPill(
+                  icon: Icons.favorite_outline,
+                  label: 'Health',
+                  value: healthLabel,
+                  color: healthColor,
+                ),
+                _OverviewStatusPill(
+                  icon: Icons.percent,
+                  label: 'Savings',
+                  value: '${(savingsRate * 100).toStringAsFixed(1)}%',
+                  color: scheme.primary,
+                ),
+                _OverviewStatusPill(
+                  icon: Icons.speed_outlined,
+                  label: 'Burn',
+                  value: '${(expenseRatio * 100).toStringAsFixed(1)}%',
+                  color: scheme.tertiary,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1574,19 +1732,47 @@ class _KpiTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final accent = _kpiAccentForLabel(label, scheme);
+    final icon = _kpiIconForLabel(label);
     return Container(
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + AppSpacing.xs),
       decoration: BoxDecoration(
         color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: accent.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 14, color: accent),
+              ),
+              const Spacer(),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.8),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             label,
-            style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+            style: text.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              letterSpacing: 0.2,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           AnimatedSwitcher(
@@ -1600,6 +1786,32 @@ class _KpiTile extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+IconData _kpiIconForLabel(String label) {
+  switch (label) {
+    case 'Monthly Pool':
+      return Icons.savings_outlined;
+    case 'Total Saved':
+      return Icons.account_balance_wallet_outlined;
+    case 'Purchase Spend':
+      return Icons.shopping_bag_outlined;
+    default:
+      return Icons.insights_outlined;
+  }
+}
+
+Color _kpiAccentForLabel(String label, ColorScheme scheme) {
+  switch (label) {
+    case 'Monthly Pool':
+      return scheme.primary;
+    case 'Total Saved':
+      return scheme.tertiary;
+    case 'Purchase Spend':
+      return scheme.error;
+    default:
+      return scheme.primary;
   }
 }
 
