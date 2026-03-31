@@ -1438,7 +1438,6 @@ class _HeroPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.24 : 0.1;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -1446,13 +1445,6 @@ class _HeroPanel extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl),
         color: AppSurfaceTint.card(scheme),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withValues(alpha: shadowAlpha),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: chips),
     );
@@ -1497,19 +1489,11 @@ class _ExpenseRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.08;
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.md),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withValues(alpha: shadowAlpha),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: ListTile(
         dense: true,
@@ -1533,20 +1517,12 @@ class _EmptyInline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.08;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.sm),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withValues(alpha: shadowAlpha),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Text(
         message,
@@ -1570,20 +1546,12 @@ class _GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.24 : 0.1;
     return AnimatedContainer(
       duration: AppDuration.short,
       margin: margin ?? const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl),
         color: color ?? AppSurfaceTint.card(scheme),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withValues(alpha: shadowAlpha),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -1606,20 +1574,12 @@ class _KpiTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.08;
     return Container(
       margin: EdgeInsets.zero,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + AppSpacing.xs),
       decoration: BoxDecoration(
         color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.shadow.withValues(alpha: shadowAlpha),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1768,7 +1728,6 @@ class _DataMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.08;
     return SizedBox(
       width: wide ? AppSize.metricWide : AppSize.metricCompact,
       child: Container(
@@ -1776,13 +1735,6 @@ class _DataMetric extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppSurfaceTint.card(scheme),
           borderRadius: BorderRadius.circular(AppRadius.md),
-          boxShadow: [
-            BoxShadow(
-              color: scheme.shadow.withValues(alpha: shadowAlpha),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: ListTile(
           dense: true,

@@ -92,7 +92,7 @@ class BudgieApp extends StatelessWidget {
         titleTextStyle: textTheme.titleLarge,
       ),
       cardTheme: CardThemeData(
-        elevation: 1,
+        elevation: 0,
         color: AppSurfaceTint.card(scheme),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
