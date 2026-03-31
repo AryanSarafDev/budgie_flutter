@@ -74,11 +74,8 @@ class PlannerViewModel extends Cubit<PlannerState> {
     }
   }
 
-  NumberFormat get _currencyFmt => NumberFormat.currency(
-        locale: 'en_IN',
-        symbol: 'INR ',
-        decimalDigits: 0,
-      );
+  NumberFormat get _currencyFmt =>
+      NumberFormat.currency(locale: 'en_IN', symbol: 'INR ', decimalDigits: 0);
 
   String asCurrency(double value) => _currencyFmt.format(value);
 
@@ -108,12 +105,15 @@ class PlannerViewModel extends Cubit<PlannerState> {
 
   int get undoDepth => _undoStack.length;
 
-  AllocationResult get allocation => calculateAllocation(effectivePlanningPool, goals);
+  AllocationResult get allocation =>
+      calculateAllocation(effectivePlanningPool, goals);
 
   List<MapEntry<GoalItem, double>> get plannedAllocation {
-    return goals.map((goal) {
-      return MapEntry(goal, allocation.allocationByGoalId[goal.id] ?? 0);
-    }).toList(growable: false);
+    return goals
+        .map((goal) {
+          return MapEntry(goal, allocation.allocationByGoalId[goal.id] ?? 0);
+        })
+        .toList(growable: false);
   }
 
   Future<void> hydrate() async {
@@ -162,9 +162,20 @@ class PlannerViewModel extends Cubit<PlannerState> {
         return;
       }
 
+      await FirebaseBootstrap.ensureGoogleSignInInitialized();
       final account = await GoogleSignIn.instance.authenticate();
       final authData = account.authentication;
-      final credential = GoogleAuthProvider.credential(idToken: authData.idToken);
+
+      if (authData.idToken == null || authData.idToken!.isEmpty) {
+        authError =
+            'Google sign-in did not return an ID token. Verify Firebase/Google OAuth app setup.';
+        _emitState();
+        return;
+      }
+
+      final credential = GoogleAuthProvider.credential(
+        idToken: authData.idToken,
+      );
       await FirebaseAuth.instance.signInWithCredential(credential);
     } catch (e) {
       authError = 'Google sign-in failed: $e';
@@ -320,7 +331,9 @@ class PlannerViewModel extends Cubit<PlannerState> {
   void addGoal() {
     final name = goalNameCtrl.text.trim();
     final target = toDoubleValue(goalTargetCtrl.text);
-    final percent = toDoubleValue(goalPercentCtrl.text).clamp(0, 100).toDouble();
+    final percent = toDoubleValue(
+      goalPercentCtrl.text,
+    ).clamp(0, 100).toDouble();
 
     if (name.isEmpty || target <= 0) {
       return;
@@ -379,19 +392,21 @@ class PlannerViewModel extends Cubit<PlannerState> {
     final result = calculateAllocation(effectivePlanningPool, goals);
     var overflow = 0.0;
 
-    goals = goals.map((goal) {
-      final grant = result.allocationByGoalId[goal.id] ?? 0;
-      if (grant <= 0) {
-        return goal;
-      }
+    goals = goals
+        .map((goal) {
+          final grant = result.allocationByGoalId[goal.id] ?? 0;
+          if (grant <= 0) {
+            return goal;
+          }
 
-      final nextSaved = goal.saved + grant;
-      if (nextSaved > goal.target) {
-        overflow += nextSaved - goal.target;
-      }
+          final nextSaved = goal.saved + grant;
+          if (nextSaved > goal.target) {
+            overflow += nextSaved - goal.target;
+          }
 
-      return goal.copyWith(saved: round2(nextSaved.clamp(0, goal.target)));
-    }).toList(growable: false);
+          return goal.copyWith(saved: round2(nextSaved.clamp(0, goal.target)));
+        })
+        .toList(growable: false);
 
     monthsProcessed += 1;
     extraSavings = round2(extraSavings + result.unassigned + overflow);
@@ -412,7 +427,9 @@ class PlannerViewModel extends Cubit<PlannerState> {
       return;
     }
 
-    final remainingToFund = round2((goal.target - goal.saved).clamp(0, double.infinity));
+    final remainingToFund = round2(
+      (goal.target - goal.saved).clamp(0, double.infinity),
+    );
     final availableInstant = round2(extraSavings + availableMonthExcess);
 
     if (availableInstant + 0.01 < remainingToFund) {
@@ -430,9 +447,13 @@ class PlannerViewModel extends Cubit<PlannerState> {
 
     if (remainingToFund > 0) {
       var stillNeeded = remainingToFund;
-      final useFromExtra = stillNeeded < extraSavings ? stillNeeded : extraSavings;
+      final useFromExtra = stillNeeded < extraSavings
+          ? stillNeeded
+          : extraSavings;
       stillNeeded = round2(stillNeeded - useFromExtra);
-      extraSavings = round2((extraSavings - useFromExtra).clamp(0, double.infinity));
+      extraSavings = round2(
+        (extraSavings - useFromExtra).clamp(0, double.infinity),
+      );
 
       if (stillNeeded > 0) {
         monthPoolSpent = round2(monthPoolSpent + stillNeeded);
@@ -463,7 +484,9 @@ class PlannerViewModel extends Cubit<PlannerState> {
 
   void resetProgress() {
     _pushUndo();
-    goals = goals.map((item) => item.copyWith(saved: 0)).toList(growable: false);
+    goals = goals
+        .map((item) => item.copyWith(saved: 0))
+        .toList(growable: false);
     monthsProcessed = 0;
     monthPoolSpent = 0;
     extraSavings = 0;
@@ -525,7 +548,9 @@ class PlannerViewModel extends Cubit<PlannerState> {
     _pushUndo();
 
     var remaining = round2(amountValue);
-    final fromCurrentExcess = remaining < availableMonthExcess ? remaining : availableMonthExcess;
+    final fromCurrentExcess = remaining < availableMonthExcess
+        ? remaining
+        : availableMonthExcess;
 
     if (fromCurrentExcess > 0) {
       monthPoolSpent = round2(monthPoolSpent + fromCurrentExcess);
@@ -533,7 +558,9 @@ class PlannerViewModel extends Cubit<PlannerState> {
     }
 
     if (remaining > 0) {
-      extraSavings = round2((extraSavings - remaining).clamp(0, double.infinity));
+      extraSavings = round2(
+        (extraSavings - remaining).clamp(0, double.infinity),
+      );
     }
 
     final note = dailySpendNoteCtrl.text.trim();
@@ -582,8 +609,13 @@ class PlannerViewModel extends Cubit<PlannerState> {
 
   Map<String, dynamic> get calendarSnapshot {
     final monthKey = DateFormat('yyyy-MM').format(calendarMonth);
-    final firstWeekday = DateTime(calendarMonth.year, calendarMonth.month, 1).weekday % 7;
-    final daysInMonth = DateTime(calendarMonth.year, calendarMonth.month + 1, 0).day;
+    final firstWeekday =
+        DateTime(calendarMonth.year, calendarMonth.month, 1).weekday % 7;
+    final daysInMonth = DateTime(
+      calendarMonth.year,
+      calendarMonth.month + 1,
+      0,
+    ).day;
 
     final totalsByDay = <int, double>{};
     var monthTotal = 0.0;
@@ -633,16 +665,18 @@ class PlannerViewModel extends Cubit<PlannerState> {
     }
 
     _aiRequestLock = true;
-  final goalContext = goals
-    .map((goal) => {
-        'name': goal.name,
-        'target': goal.target,
-        'saved': goal.saved,
-        'priority': goal.priority.name,
-        'currentPercent': goal.percent,
-        'monthlyAllocation': allocation.allocationByGoalId[goal.id] ?? 0,
-      })
-    .toList(growable: false);
+    final goalContext = goals
+        .map(
+          (goal) => {
+            'name': goal.name,
+            'target': goal.target,
+            'saved': goal.saved,
+            'priority': goal.priority.name,
+            'currentPercent': goal.percent,
+            'monthlyAllocation': allocation.allocationByGoalId[goal.id] ?? 0,
+          },
+        )
+        .toList(growable: false);
 
     try {
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -660,7 +694,8 @@ class PlannerViewModel extends Cubit<PlannerState> {
       if (now < _geminiBlockedUntil) {
         final waitSeconds = ((_geminiBlockedUntil - now) / 1000).ceil();
         aiResult = _buildLocalAdvisorPlan(goalContext);
-        aiError = 'Gemini is rate-limited. Using local smart plan for ${waitSeconds}s.';
+        aiError =
+            'Gemini is rate-limited. Using local smart plan for ${waitSeconds}s.';
         _emitState();
         return;
       }
@@ -691,23 +726,25 @@ class PlannerViewModel extends Cubit<PlannerState> {
           'contents': [
             {
               'parts': [
-                {'text': prompt}
-              ]
-            }
+                {'text': prompt},
+              ],
+            },
           ],
           'generationConfig': {
             'temperature': 0.4,
             'responseMimeType': 'application/json',
-          }
+          },
         }),
       );
 
       if (response.statusCode != 200) {
         if (response.statusCode == 429) {
           _geminiBlockedUntil =
-              DateTime.now().millisecondsSinceEpoch + const Duration(seconds: 20).inMilliseconds;
+              DateTime.now().millisecondsSinceEpoch +
+              const Duration(seconds: 20).inMilliseconds;
           aiResult = _buildLocalAdvisorPlan(goalContext);
-          aiError = 'Gemini quota exceeded. Using local smart plan temporarily.';
+          aiError =
+              'Gemini quota exceeded. Using local smart plan temporarily.';
           aiRawText = response.body;
           _addLog(EventType.ai, 'Gemini quota exceeded; local fallback used.');
           return;
@@ -717,11 +754,13 @@ class PlannerViewModel extends Cubit<PlannerState> {
       }
 
       final body = jsonDecode(response.body);
-      final text = (((body['candidates'] as List?) ?? [])
-              .firstOrNull?['content']?['parts'] as List?)
-          ?.map((part) => (part['text'] ?? '').toString())
-          .join('\n')
-          .trim();
+      final text =
+          (((body['candidates'] as List?) ?? [])
+                      .firstOrNull?['content']?['parts']
+                  as List?)
+              ?.map((part) => (part['text'] ?? '').toString())
+              .join('\n')
+              .trim();
 
       if (text == null || text.isEmpty) {
         throw Exception('Gemini returned empty response.');
@@ -755,9 +794,12 @@ class PlannerViewModel extends Cubit<PlannerState> {
       return;
     }
 
-    final normalizedNames = goals.map((goal) => goal.name.trim().toLowerCase()).toList();
+    final normalizedNames = goals
+        .map((goal) => goal.name.trim().toLowerCase())
+        .toList();
     if (normalizedNames.toSet().length != normalizedNames.length) {
-      aiError = 'Duplicate goal names found. Rename goals to apply AI percentages.';
+      aiError =
+          'Duplicate goal names found. Rename goals to apply AI percentages.';
       _emitState();
       return;
     }
@@ -769,14 +811,16 @@ class PlannerViewModel extends Cubit<PlannerState> {
         suggestion.goalName.trim().toLowerCase(): suggestion.percent,
     };
 
-    goals = goals.map((goal) {
-      final key = goal.name.trim().toLowerCase();
-      if (!byName.containsKey(key)) {
-        return goal;
-      }
-      final nextPercent = (byName[key] ?? 0).clamp(0, 100).toDouble();
-      return goal.copyWith(percent: nextPercent);
-    }).toList(growable: false);
+    goals = goals
+        .map((goal) {
+          final key = goal.name.trim().toLowerCase();
+          if (!byName.containsKey(key)) {
+            return goal;
+          }
+          final nextPercent = (byName[key] ?? 0).clamp(0, 100).toDouble();
+          return goal.copyWith(percent: nextPercent);
+        })
+        .toList(growable: false);
 
     _addLog(
       EventType.ai,
@@ -789,8 +833,11 @@ class PlannerViewModel extends Cubit<PlannerState> {
 
   String exportExpenseHistoryJson() {
     final entries = logs
-        .where((entry) =>
-            entry.type == EventType.expense || entry.type == EventType.purchase)
+        .where(
+          (entry) =>
+              entry.type == EventType.expense ||
+              entry.type == EventType.purchase,
+        )
         .map((entry) => entry.toJson())
         .toList(growable: false);
 
@@ -855,9 +902,10 @@ class PlannerViewModel extends Cubit<PlannerState> {
       // Continue with best-effort extraction.
     }
 
-    final fenced = RegExp(r'```json\s*([\s\S]*?)```', caseSensitive: false)
-        .firstMatch(text)
-        ?.group(1);
+    final fenced = RegExp(
+      r'```json\s*([\s\S]*?)```',
+      caseSensitive: false,
+    ).firstMatch(text)?.group(1);
     if (fenced != null) {
       try {
         final parsed = jsonDecode(fenced);
@@ -909,15 +957,19 @@ class PlannerViewModel extends Cubit<PlannerState> {
     final suggestions = ((parsed['suggestedPercents'] as List?) ?? [])
         .whereType<Map>()
         .map((entry) => Map<String, dynamic>.from(entry))
-        .map((entry) => GoalPercentSuggestion(
-              goalName: (entry['goalName'] ?? '').toString(),
-              percent: toDoubleValue(entry['percent']).clamp(0, 100).toDouble(),
-            ))
+        .map(
+          (entry) => GoalPercentSuggestion(
+            goalName: (entry['goalName'] ?? '').toString(),
+            percent: toDoubleValue(entry['percent']).clamp(0, 100).toDouble(),
+          ),
+        )
         .where((entry) => entry.goalName.trim().isNotEmpty)
         .toList(growable: false);
 
     if (summary.isEmpty ||
-        (recommendations.isEmpty && quickActions.isEmpty && suggestions.isEmpty)) {
+        (recommendations.isEmpty &&
+            quickActions.isEmpty &&
+            suggestions.isEmpty)) {
       return _buildLocalAdvisorPlan(goalsContext);
     }
 
@@ -930,26 +982,35 @@ class PlannerViewModel extends Cubit<PlannerState> {
     );
   }
 
-  AdvisorResult _buildLocalAdvisorPlan(List<Map<String, dynamic>> goalsContext) {
+  AdvisorResult _buildLocalAdvisorPlan(
+    List<Map<String, dynamic>> goalsContext,
+  ) {
     final activeGoals = goalsContext
-        .where((goal) => toDoubleValue(goal['target']) > toDoubleValue(goal['saved']) + 0.01)
+        .where(
+          (goal) =>
+              toDoubleValue(goal['target']) >
+              toDoubleValue(goal['saved']) + 0.01,
+        )
         .toList(growable: false);
 
-    final sorted = [...activeGoals]..sort((a, b) {
-      final pa = a['priority'] == 'high'
-          ? 0
-          : (a['priority'] == 'medium' ? 1 : 2);
-      final pb = b['priority'] == 'high'
-          ? 0
-          : (b['priority'] == 'medium' ? 1 : 2);
-      if (pa != pb) {
-        return pa.compareTo(pb);
-      }
+    final sorted = [...activeGoals]
+      ..sort((a, b) {
+        final pa = a['priority'] == 'high'
+            ? 0
+            : (a['priority'] == 'medium' ? 1 : 2);
+        final pb = b['priority'] == 'high'
+            ? 0
+            : (b['priority'] == 'medium' ? 1 : 2);
+        if (pa != pb) {
+          return pa.compareTo(pb);
+        }
 
-      final remA = (toDoubleValue(a['target']) - toDoubleValue(a['saved'])).clamp(0, double.infinity);
-      final remB = (toDoubleValue(b['target']) - toDoubleValue(b['saved'])).clamp(0, double.infinity);
-      return remA.compareTo(remB);
-    });
+        final remA = (toDoubleValue(a['target']) - toDoubleValue(a['saved']))
+            .clamp(0, double.infinity);
+        final remB = (toDoubleValue(b['target']) - toDoubleValue(b['saved']))
+            .clamp(0, double.infinity);
+        return remA.compareTo(remB);
+      });
 
     final suggestionCount = sorted.length > 4 ? 4 : sorted.length;
     final suggestions = <GoalPercentSuggestion>[];
@@ -990,12 +1051,13 @@ class PlannerViewModel extends Cubit<PlannerState> {
       summary: overSpend
           ? 'Expenses are above salary. Reduce recurring costs before adding new goals.'
           : expenseRatio >= 0.75
-              ? 'Expenses are high relative to salary. Keep fixed goal percentages conservative.'
-              : 'Savings health looks stable. Prioritize high-impact goals and process monthly consistently.',
+          ? 'Expenses are high relative to salary. Keep fixed goal percentages conservative.'
+          : 'Savings health looks stable. Prioritize high-impact goals and process monthly consistently.',
       recommendations: [
         'Keep fixed percentages under 100% total to avoid forced scaling.',
         'Process month once allocations look balanced and revisit priorities monthly.',
-        if (overSpend) 'Cut or renegotiate at least one recurring expense this month.',
+        if (overSpend)
+          'Cut or renegotiate at least one recurring expense this month.',
       ],
       quickActions: [
         'Apply suggested percentages to active goals.',
@@ -1025,14 +1087,11 @@ class PlannerViewModel extends Cubit<PlannerState> {
         await FirebaseFirestore.instance
             .collection('budgieUsers')
             .doc(authUser!.uid)
-            .set(
-          {
-            'plannerState': payload,
-            'updatedAt': FieldValue.serverTimestamp(),
-            'email': authUser!.email,
-          },
-          SetOptions(merge: true),
-        );
+            .set({
+              'plannerState': payload,
+              'updatedAt': FieldValue.serverTimestamp(),
+              'email': authUser!.email,
+            }, SetOptions(merge: true));
         cloudStatus = 'synced';
       } catch (_) {
         cloudStatus = 'error';
@@ -1044,17 +1103,21 @@ class PlannerViewModel extends Cubit<PlannerState> {
   Map<String, dynamic> _buildPayload() {
     return {
       'salary': salary,
-      'expenses': expenses.map((entry) => entry.toJson()).toList(growable: false),
+      'expenses': expenses
+          .map((entry) => entry.toJson())
+          .toList(growable: false),
       'monthsProcessed': monthsProcessed,
       'monthPoolSpent': monthPoolSpent,
       'extraSavings': extraSavings,
       'spentOnPurchases': spentOnPurchases,
-      'purchaseHistory':
-          purchaseHistory.map((entry) => entry.toJson()).toList(growable: false),
+      'purchaseHistory': purchaseHistory
+          .map((entry) => entry.toJson())
+          .toList(growable: false),
       'logs': logs.map((entry) => entry.toJson()).toList(growable: false),
       'goals': goals.map((entry) => entry.toJson()).toList(growable: false),
-      'dailySpends':
-          dailySpends.map((entry) => entry.toJson()).toList(growable: false),
+      'dailySpends': dailySpends
+          .map((entry) => entry.toJson())
+          .toList(growable: false),
     };
   }
 
@@ -1070,7 +1133,9 @@ class PlannerViewModel extends Cubit<PlannerState> {
     spentOnPurchases = toDoubleValue(payload['spentOnPurchases']);
     purchaseHistory = ((payload['purchaseHistory'] as List?) ?? [])
         .whereType<Map>()
-        .map((entry) => PurchaseEntry.fromJson(Map<String, dynamic>.from(entry)))
+        .map(
+          (entry) => PurchaseEntry.fromJson(Map<String, dynamic>.from(entry)),
+        )
         .toList(growable: false);
     logs = ((payload['logs'] as List?) ?? [])
         .whereType<Map>()
@@ -1082,7 +1147,9 @@ class PlannerViewModel extends Cubit<PlannerState> {
         .toList(growable: false);
     dailySpends = ((payload['dailySpends'] as List?) ?? [])
         .whereType<Map>()
-        .map((entry) => DailySpendEntry.fromJson(Map<String, dynamic>.from(entry)))
+        .map(
+          (entry) => DailySpendEntry.fromJson(Map<String, dynamic>.from(entry)),
+        )
         .toList(growable: false);
   }
 

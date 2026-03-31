@@ -1,7 +1,11 @@
+import 'package:budgie_flutter/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class FirebaseBootstrap {
   static bool initialized = false;
+  static bool _googleSignInInitialized = false;
 
   static Future<void> tryInitialize() async {
     if (initialized || Firebase.apps.isNotEmpty) {
@@ -9,7 +13,7 @@ class FirebaseBootstrap {
       return;
     }
 
-    final options = _optionsFromEnvironment();
+    final options = _optionsFromEnvironment() ?? _optionsFromConfiguredApp();
     if (options == null) {
       return;
     }
@@ -22,11 +26,33 @@ class FirebaseBootstrap {
     }
   }
 
+  static FirebaseOptions? _optionsFromConfiguredApp() {
+    try {
+      return DefaultFirebaseOptions.currentPlatform;
+    } on UnsupportedError {
+      return null;
+    }
+  }
+
+  static Future<void> ensureGoogleSignInInitialized() async {
+    if (_googleSignInInitialized || kIsWeb) {
+      return;
+    }
+
+    try {
+      await GoogleSignIn.instance.initialize();
+      await GoogleSignIn.instance.attemptLightweightAuthentication();
+    } finally {
+      _googleSignInInitialized = true;
+    }
+  }
+
   static FirebaseOptions? _optionsFromEnvironment() {
     const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
     const appId = String.fromEnvironment('FIREBASE_APP_ID');
-    const messagingSenderId =
-        String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID');
+    const messagingSenderId = String.fromEnvironment(
+      'FIREBASE_MESSAGING_SENDER_ID',
+    );
     const projectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
     const authDomain = String.fromEnvironment('FIREBASE_AUTH_DOMAIN');
     const storageBucket = String.fromEnvironment('FIREBASE_STORAGE_BUCKET');

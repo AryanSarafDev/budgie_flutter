@@ -89,7 +89,9 @@ class PlannerScreen extends StatelessWidget {
                     final amountInput = amountCtrl.text.trim();
                     if (amountInput.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter an amount.')),
+                        const SnackBar(
+                          content: Text('Please enter an amount.'),
+                        ),
                       );
                       return;
                     }
@@ -105,9 +107,9 @@ class PlannerScreen extends StatelessWidget {
                     }
 
                     if (error != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(error)),
-                      );
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(error)));
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Daily expense added.')),
@@ -136,10 +138,7 @@ class PlannerScreen extends StatelessWidget {
         final textTheme = Theme.of(context).textTheme;
         return Scaffold(
           appBar: AppBar(
-            title: Text(
-              'Budgie',
-              style: textTheme.titleLarge,
-            ),
+            title: Text('Budgie', style: textTheme.titleLarge),
             actions: [
               IconButton(
                 onPressed: vm.undoDepth > 0 ? vm.undoLastAction : null,
@@ -154,7 +153,11 @@ class PlannerScreen extends StatelessWidget {
                     return;
                   }
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Expense history JSON copied to clipboard.')),
+                    const SnackBar(
+                      content: Text(
+                        'Expense history JSON copied to clipboard.',
+                      ),
+                    ),
                   );
                 },
                 icon: const Icon(Icons.download_outlined),
@@ -162,7 +165,9 @@ class PlannerScreen extends StatelessWidget {
               ),
               if (vm.firebaseReady)
                 TextButton.icon(
-                  onPressed: vm.authUser == null ? vm.signInWithGoogle : vm.signOut,
+                  onPressed: vm.authUser == null
+                      ? vm.signInWithGoogle
+                      : vm.signOut,
                   icon: Icon(vm.authUser == null ? Icons.login : Icons.logout),
                   label: Text(vm.authUser == null ? 'Login' : 'Logout'),
                 ),
@@ -171,7 +176,9 @@ class PlannerScreen extends StatelessWidget {
                 child: Center(
                   child: Text(
                     vm.cloudStatus.toUpperCase(),
-                    style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                    style: textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -195,7 +202,10 @@ class PlannerScreen extends StatelessWidget {
 
                           return FadeTransition(
                             opacity: animation,
-                            child: SlideTransition(position: offset, child: child),
+                            child: SlideTransition(
+                              position: offset,
+                              child: child,
+                            ),
                           );
                         },
                         child: vm.activeTab == 0
@@ -215,7 +225,12 @@ class PlannerScreen extends StatelessWidget {
           bottomNavigationBar: SafeArea(
             top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.md,
+              ),
               child: SizedBox(
                 height: 84,
                 child: Stack(
@@ -230,8 +245,14 @@ class PlannerScreen extends StatelessWidget {
                           height: 56,
                           selectedIndex: vm.activeTab,
                           destinations: const [
-                            NavigationDestination(icon: Icon(Icons.savings), label: 'Planner'),
-                            NavigationDestination(icon: Icon(Icons.analytics), label: 'Analytics'),
+                            NavigationDestination(
+                              icon: Icon(Icons.savings),
+                              label: 'Planner',
+                            ),
+                            NavigationDestination(
+                              icon: Icon(Icons.analytics),
+                              label: 'Analytics',
+                            ),
                           ],
                           onDestinationSelected: vm.setTab,
                         ),
@@ -241,7 +262,8 @@ class PlannerScreen extends StatelessWidget {
                       Positioned(
                         top: -18,
                         child: FloatingActionButton(
-                          onPressed: () => _showQuickDailyExpenseDialog(context, vm),
+                          onPressed: () =>
+                              _showQuickDailyExpenseDialog(context, vm),
                           child: const Icon(Icons.add),
                         ),
                       ),
@@ -298,6 +320,19 @@ class _PlannerTab extends StatefulWidget {
 class _PlannerTabState extends State<_PlannerTab> {
   int _section = 0;
 
+  _HeaderChipTone _cloudTone(String cloudStatus) {
+    switch (cloudStatus.toLowerCase()) {
+      case 'synced':
+        return _HeaderChipTone.success;
+      case 'syncing':
+        return _HeaderChipTone.info;
+      case 'error':
+        return _HeaderChipTone.warning;
+      default:
+        return _HeaderChipTone.neutral;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = widget.vm;
@@ -312,7 +347,12 @@ class _PlannerTabState extends State<_PlannerTab> {
     ];
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 108),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        108,
+      ),
       children: [
         _HeroPanel(
           compact: _section != 0,
@@ -321,9 +361,23 @@ class _PlannerTabState extends State<_PlannerTab> {
           value: vm.asCurrency(vm.totalSavingsWithCurrentExcess),
           subtitle: 'Salary, spending, and runway at a glance.',
           chips: [
-            _HeaderChip(label: 'Month #${vm.monthsProcessed}', icon: Icons.calendar_month),
-            _HeaderChip(label: 'Cloud ${vm.cloudStatus.toUpperCase()}', icon: Icons.cloud_done_outlined),
-            _HeaderChip(label: 'Undo ${vm.undoDepth}', icon: Icons.undo),
+            _HeaderChip(
+              label: 'Month #${vm.monthsProcessed}',
+              icon: Icons.calendar_month,
+              tone: _HeaderChipTone.info,
+            ),
+            _HeaderChip(
+              label: 'Cloud ${vm.cloudStatus.toUpperCase()}',
+              icon: Icons.cloud_done_outlined,
+              tone: _cloudTone(vm.cloudStatus),
+            ),
+            _HeaderChip(
+              label: 'Undo ${vm.undoDepth}',
+              icon: Icons.undo,
+              tone: vm.undoDepth > 0
+                  ? _HeaderChipTone.info
+                  : _HeaderChipTone.neutral,
+            ),
           ],
         ),
         if (vm.authError.isNotEmpty)
@@ -402,7 +456,9 @@ class _PlannerOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final width = MediaQuery.sizeOf(context).width;
-    final cardWidth = width > 900 ? (width - 32 - 16) / 3 : (width - 32 - 8) / 2;
+    final cardWidth = width > 900
+        ? (width - 32 - 16) / 3
+        : (width - 32 - 8) / 2;
     final expenseRatio = vm.salary <= 0
         ? 0.0
         : (vm.monthlyExpenseTotal / vm.salary).clamp(0, 1).toDouble();
@@ -413,16 +469,21 @@ class _PlannerOverview extends StatelessWidget {
     final healthLabel = expenseRatio >= 0.9
         ? 'Pressure'
         : expenseRatio >= 0.7
-            ? 'Tight'
-            : 'Stable';
+        ? 'Tight'
+        : 'Stable';
     final healthColor = expenseRatio >= 0.9
-      ? scheme.error
+        ? scheme.error
         : expenseRatio >= 0.7
         ? scheme.tertiary
         : scheme.primary;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xxs, AppSpacing.xs, AppSpacing.xxs, AppSpacing.xs),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xxs,
+        AppSpacing.xs,
+        AppSpacing.xxs,
+        AppSpacing.xs,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -538,7 +599,10 @@ class _OverviewStatusPill extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 6,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppRadius.full),
@@ -558,9 +622,7 @@ class _OverviewStatusPill extends StatelessWidget {
           const SizedBox(width: AppSpacing.xs),
           Text(
             '$label: $value',
-            style: text.labelSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+            style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -592,7 +654,9 @@ class _OverviewSplitBar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final total = leftValue + rightValue;
-    final leftRatio = total <= 0 ? 0.5 : (leftValue / total).clamp(0, 1).toDouble();
+    final leftRatio = total <= 0
+        ? 0.5
+        : (leftValue / total).clamp(0, 1).toDouble();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,18 +695,14 @@ class _OverviewSplitBar extends StatelessWidget {
             Expanded(
               child: Text(
                 format(leftValue),
-                style: text.titleSmall?.copyWith(
-                  color: scheme.onSurface,
-                ),
+                style: text.titleSmall?.copyWith(color: scheme.onSurface),
               ),
             ),
             Expanded(
               child: Text(
                 format(rightValue),
                 textAlign: TextAlign.right,
-                style: text.titleSmall?.copyWith(
-                  color: scheme.onSurface,
-                ),
+                style: text.titleSmall?.copyWith(color: scheme.onSurface),
               ),
             ),
           ],
@@ -667,7 +727,8 @@ class _PlannerExpenses extends StatelessWidget {
           children: [
             const _SectionHead(
               title: 'Expenses',
-              subtitle: 'Maintain recurring outflows. This list drives your monthly pool.',
+              subtitle:
+                  'Maintain recurring outflows. This list drives your monthly pool.',
               icon: Icons.receipt_outlined,
             ),
             const SizedBox(height: AppSpacing.panel),
@@ -733,7 +794,8 @@ class _PlannerGoals extends StatelessWidget {
           children: [
             const _SectionHead(
               title: 'Goals & Allocation',
-              subtitle: 'Create goals and review per-goal monthly allocation output.',
+              subtitle:
+                  'Create goals and review per-goal monthly allocation output.',
               icon: Icons.flag_outlined,
             ),
             const SizedBox(height: AppSpacing.sm + AppSpacing.xxs),
@@ -741,9 +803,18 @@ class _PlannerGoals extends StatelessWidget {
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.sm,
               children: [
-                _DataMetric(label: 'Fixed Input', value: '${alloc.fixedPercentInput.toStringAsFixed(1)}%'),
-                _DataMetric(label: 'Applied %', value: '${alloc.fixedPercentApplied.toStringAsFixed(1)}%'),
-                _DataMetric(label: 'Scaling', value: alloc.scalingApplied ? 'Enabled' : 'Normal'),
+                _DataMetric(
+                  label: 'Fixed Input',
+                  value: '${alloc.fixedPercentInput.toStringAsFixed(1)}%',
+                ),
+                _DataMetric(
+                  label: 'Applied %',
+                  value: '${alloc.fixedPercentApplied.toStringAsFixed(1)}%',
+                ),
+                _DataMetric(
+                  label: 'Scaling',
+                  value: alloc.scalingApplied ? 'Enabled' : 'Normal',
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -772,7 +843,10 @@ class _PlannerGoals extends StatelessWidget {
               ),
               items: const [
                 DropdownMenuItem(value: GoalPriority.high, child: Text('High')),
-                DropdownMenuItem(value: GoalPriority.medium, child: Text('Medium')),
+                DropdownMenuItem(
+                  value: GoalPriority.medium,
+                  child: Text('Medium'),
+                ),
                 DropdownMenuItem(value: GoalPriority.low, child: Text('Low')),
               ],
               onChanged: (value) {
@@ -803,9 +877,13 @@ class _PlannerGoals extends StatelessWidget {
               ...vm.plannedAllocation.map((entry) {
                 final goal = entry.key;
                 final planned = entry.value;
-                final progress = goal.target <= 0 ? 0.0 : (goal.saved / goal.target).clamp(0, 1).toDouble();
+                final progress = goal.target <= 0
+                    ? 0.0
+                    : (goal.saved / goal.target).clamp(0, 1).toDouble();
                 return _GlassCard(
-                  margin: const EdgeInsets.symmetric(vertical: AppSpacing.compact),
+                  margin: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.compact,
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.panel),
                     child: Column(
@@ -819,29 +897,46 @@ class _PlannerGoals extends StatelessWidget {
                                 style: Theme.of(context).textTheme.titleSmall,
                               ),
                             ),
-                            IconButton(onPressed: () => vm.removeGoal(goal.id), icon: const Icon(Icons.delete_outline)),
+                            IconButton(
+                              onPressed: () => vm.removeGoal(goal.id),
+                              icon: const Icon(Icons.delete_outline),
+                            ),
                           ],
                         ),
                         Wrap(
                           spacing: AppSpacing.sm,
                           runSpacing: AppSpacing.sm,
                           children: [
-                            _DataMetric(label: 'Saved', value: vm.asCurrency(goal.saved)),
-                            _DataMetric(label: 'Target', value: vm.asCurrency(goal.target)),
-                            _DataMetric(label: 'Planned', value: vm.asCurrency(planned)),
-                            _DataMetric(label: 'Priority', value: goal.priority.name.toUpperCase()),
+                            _DataMetric(
+                              label: 'Saved',
+                              value: vm.asCurrency(goal.saved),
+                            ),
+                            _DataMetric(
+                              label: 'Target',
+                              value: vm.asCurrency(goal.target),
+                            ),
+                            _DataMetric(
+                              label: 'Planned',
+                              value: vm.asCurrency(planned),
+                            ),
+                            _DataMetric(
+                              label: 'Priority',
+                              value: goal.priority.name.toUpperCase(),
+                            ),
                           ],
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         _SquigglyProgressBar(
                           value: progress,
                           height: AppSpacing.sm,
-                          trackColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          trackColor: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           color: goal.priority == GoalPriority.high
                               ? Theme.of(context).colorScheme.error
                               : goal.priority == GoalPriority.medium
-                                  ? Theme.of(context).colorScheme.tertiary
-                                  : Theme.of(context).colorScheme.primary,
+                              ? Theme.of(context).colorScheme.tertiary
+                              : Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         FilledButton.tonalIcon(
@@ -900,7 +995,9 @@ class _PlannerDaily extends StatelessWidget {
                     }
                   },
                   icon: const Icon(Icons.calendar_today_outlined),
-                  label: Text(DateFormat('dd MMM yyyy').format(vm.dailySpendDate)),
+                  label: Text(
+                    DateFormat('dd MMM yyyy').format(vm.dailySpendDate),
+                  ),
                 ),
                 SizedBox(
                   width: AppSize.compactInput,
@@ -927,7 +1024,9 @@ class _PlannerDaily extends StatelessWidget {
                   onPressed: () {
                     final error = vm.addDailySpending();
                     if (error != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(error)));
                     }
                   },
                   icon: const Icon(Icons.add_chart_outlined),
@@ -938,7 +1037,10 @@ class _PlannerDaily extends StatelessWidget {
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
-                IconButton(onPressed: vm.previousCalendarMonth, icon: const Icon(Icons.chevron_left)),
+                IconButton(
+                  onPressed: vm.previousCalendarMonth,
+                  icon: const Icon(Icons.chevron_left),
+                ),
                 Expanded(
                   child: Text(
                     calendar['monthLabel'].toString(),
@@ -946,7 +1048,10 @@ class _PlannerDaily extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
-                IconButton(onPressed: vm.nextCalendarMonth, icon: const Icon(Icons.chevron_right)),
+                IconButton(
+                  onPressed: vm.nextCalendarMonth,
+                  icon: const Icon(Icons.chevron_right),
+                ),
                 TextButton.icon(
                   onPressed: vm.resetCalendarMonth,
                   icon: const Icon(Icons.today),
@@ -954,11 +1059,23 @@ class _PlannerDaily extends StatelessWidget {
                 ),
               ],
             ),
-            _DataMetric(label: 'Month Spend', value: vm.asCurrency(toDoubleValue(calendar['monthTotal'])), wide: true),
+            _DataMetric(
+              label: 'Month Spend',
+              value: vm.asCurrency(toDoubleValue(calendar['monthTotal'])),
+              wide: true,
+            ),
             const SizedBox(height: AppSpacing.sm),
             const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [Text('Sun'), Text('Mon'), Text('Tue'), Text('Wed'), Text('Thu'), Text('Fri'), Text('Sat')],
+              children: [
+                Text('Sun'),
+                Text('Mon'),
+                Text('Tue'),
+                Text('Wed'),
+                Text('Thu'),
+                Text('Fri'),
+                Text('Sat'),
+              ],
             ),
             const SizedBox(height: AppSpacing.compact),
             GridView.builder(
@@ -981,7 +1098,9 @@ class _PlannerDaily extends StatelessWidget {
                   padding: const EdgeInsets.all(AppSpacing.compact),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
                     color: total > 0
                         ? Theme.of(context).colorScheme.secondaryContainer
                         : Theme.of(context).colorScheme.surfaceContainer,
@@ -989,7 +1108,10 @@ class _PlannerDaily extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${cell['day']}', style: Theme.of(context).textTheme.labelSmall),
+                      Text(
+                        '${cell['day']}',
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
                       const Spacer(),
                       if (total > 0)
                         Text(
@@ -1023,20 +1145,24 @@ class _PlannerAdvisor extends StatelessWidget {
           children: [
             const _SectionHead(
               title: 'AI Advisor',
-              subtitle: 'Generate recommendations and apply suggested allocations when relevant.',
+              subtitle:
+                  'Generate recommendations and apply suggested allocations when relevant.',
               icon: Icons.psychology_alt_outlined,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Model: $geminiModel (local fallback enabled).',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             if (vm.aiError.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.sm),
-                child: Text(vm.aiError, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                child: Text(
+                  vm.aiError,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
             const SizedBox(height: AppSpacing.sm),
             Row(
@@ -1044,13 +1170,19 @@ class _PlannerAdvisor extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: vm.aiLoading ? null : vm.runAiAdvisor,
                   icon: vm.aiLoading
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.auto_awesome),
                   label: Text(vm.aiLoading ? 'Analyzing...' : 'Generate Plan'),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 OutlinedButton(
-                  onPressed: vm.aiResult == null ? null : vm.applyAiPercentSuggestions,
+                  onPressed: vm.aiResult == null
+                      ? null
+                      : vm.applyAiPercentSuggestions,
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1064,7 +1196,11 @@ class _PlannerAdvisor extends StatelessWidget {
             ),
             if (vm.aiResult != null) ...[
               const SizedBox(height: 12),
-              _DataMetric(label: 'Source', value: vm.aiResult!.source.toUpperCase(), wide: true),
+              _DataMetric(
+                label: 'Source',
+                value: vm.aiResult!.source.toUpperCase(),
+                wide: true,
+              ),
               const SizedBox(height: AppSpacing.compact),
               Text(vm.aiResult!.summary),
               const SizedBox(height: AppSpacing.sm),
@@ -1072,14 +1208,22 @@ class _PlannerAdvisor extends StatelessWidget {
                 ...vm.aiResult!.recommendations.map((line) => Text('• $line')),
               if (vm.aiResult!.quickActions.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.sm),
-                Text('Quick Actions', style: Theme.of(context).textTheme.titleSmall),
+                Text(
+                  'Quick Actions',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
                 ...vm.aiResult!.quickActions.map((line) => Text('• $line')),
               ],
               if (vm.aiResult!.suggestedPercents.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.sm),
-                Text('Suggested Allocation', style: Theme.of(context).textTheme.titleSmall),
+                Text(
+                  'Suggested Allocation',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
                 ...vm.aiResult!.suggestedPercents.map(
-                  (entry) => Text('${entry.goalName}: ${entry.percent.toStringAsFixed(1)}%'),
+                  (entry) => Text(
+                    '${entry.goalName}: ${entry.percent.toStringAsFixed(1)}%',
+                  ),
                 ),
               ],
             ],
@@ -1107,7 +1251,8 @@ class _PlannerRun extends StatelessWidget {
               children: [
                 const _SectionHead(
                   title: 'Monthly Execution',
-                  subtitle: 'Process month-end allocation and maintain reset controls.',
+                  subtitle:
+                      'Process month-end allocation and maintain reset controls.',
                   icon: Icons.schedule_send_outlined,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -1115,8 +1260,14 @@ class _PlannerRun extends StatelessWidget {
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.sm,
                   children: [
-                    _DataMetric(label: 'Processed', value: '${vm.monthsProcessed}'),
-                    _DataMetric(label: 'Purchase Spend', value: vm.asCurrency(vm.spentOnPurchases)),
+                    _DataMetric(
+                      label: 'Processed',
+                      value: '${vm.monthsProcessed}',
+                    ),
+                    _DataMetric(
+                      label: 'Purchase Spend',
+                      value: vm.asCurrency(vm.spentOnPurchases),
+                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm + AppSpacing.xxs),
@@ -1164,14 +1315,21 @@ class _PlannerRun extends StatelessWidget {
                 if (vm.purchaseHistory.isEmpty)
                   const _EmptyInline(message: 'No purchases yet.')
                 else
-                  ...vm.purchaseHistory.take(8).map(
+                  ...vm.purchaseHistory
+                      .take(8)
+                      .map(
                         (entry) => ListTile(
                           dense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: 4,
+                          ),
                           visualDensity: VisualDensity.compact,
-                            minTileHeight: 42,
+                          minTileHeight: 42,
                           title: Text(entry.goalName),
-                          subtitle: Text(DateFormat('dd MMM yyyy').format(entry.purchasedAt)),
+                          subtitle: Text(
+                            DateFormat('dd MMM yyyy').format(entry.purchasedAt),
+                          ),
                           trailing: Text(vm.asCurrency(entry.amount)),
                         ),
                       ),
@@ -1207,7 +1365,12 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
     ];
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 108),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        108,
+      ),
       children: [
         _HeroPanel(
           compact: false,
@@ -1223,7 +1386,12 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
         ),
         _GlassCard(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SegmentedButton<int>(
@@ -1252,7 +1420,11 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
 
   Widget _buildSection(PlannerViewModel vm, int section) {
     final expenseAdded = vm.logs
-        .where((entry) => entry.type == EventType.expense && entry.message.toLowerCase().contains('added'))
+        .where(
+          (entry) =>
+              entry.type == EventType.expense &&
+              entry.message.toLowerCase().contains('added'),
+        )
         .fold<double>(0, (total, entry) => total + (entry.amount ?? 0));
     final purchases = vm.logs
         .where((entry) => entry.type == EventType.purchase)
@@ -1264,7 +1436,9 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
         continue;
       }
       final key = DateFormat('yyyy-MM').format(entry.ts);
-      trendByMonth[key] = round2((trendByMonth[key] ?? 0) + (entry.amount ?? 0));
+      trendByMonth[key] = round2(
+        (trendByMonth[key] ?? 0) + (entry.amount ?? 0),
+      );
     }
     final monthKeys = trendByMonth.keys.toList()..sort();
     final monthRows = monthKeys.reversed.take(8).toList(growable: false);
@@ -1278,7 +1452,8 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
             children: [
               const _SectionHead(
                 title: 'Analytics Snapshot',
-                subtitle: 'Current state across expenses, purchases, and activity volume.',
+                subtitle:
+                    'Current state across expenses, purchases, and activity volume.',
                 icon: Icons.dashboard_outlined,
               ),
               const SizedBox(height: AppSpacing.sm + AppSpacing.xxs),
@@ -1286,10 +1461,22 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
                 children: [
-                  _DataMetric(label: 'Expenses Added', value: vm.asCurrency(expenseAdded)),
-                  _DataMetric(label: 'Purchases', value: vm.asCurrency(purchases)),
-                  _DataMetric(label: 'Active Goals', value: '${vm.goals.length}'),
-                  _DataMetric(label: 'Daily Entries', value: '${vm.dailySpends.length}'),
+                  _DataMetric(
+                    label: 'Expenses Added',
+                    value: vm.asCurrency(expenseAdded),
+                  ),
+                  _DataMetric(
+                    label: 'Purchases',
+                    value: vm.asCurrency(purchases),
+                  ),
+                  _DataMetric(
+                    label: 'Active Goals',
+                    value: '${vm.goals.length}',
+                  ),
+                  _DataMetric(
+                    label: 'Daily Entries',
+                    value: '${vm.dailySpends.length}',
+                  ),
                 ],
               ),
             ],
@@ -1316,11 +1503,16 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
               else
                 ...monthRows.map((key) {
                   final labelDate = DateTime.tryParse('$key-01');
-                  final label = labelDate == null ? key : DateFormat('MMM yyyy').format(labelDate);
+                  final label = labelDate == null
+                      ? key
+                      : DateFormat('MMM yyyy').format(labelDate);
                   final amount = trendByMonth[key] ?? 0;
                   return ListTile(
                     dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: 4,
+                    ),
                     visualDensity: VisualDensity.compact,
                     minTileHeight: 42,
                     title: Column(
@@ -1332,7 +1524,10 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
                           value: amount,
                           maxValue: monthRows
                               .map((monthKey) => trendByMonth[monthKey] ?? 0)
-                              .fold<double>(1, (max, value) => value > max ? value : max),
+                              .fold<double>(
+                                1,
+                                (max, value) => value > max ? value : max,
+                              ),
                         ),
                       ],
                     ),
@@ -1363,12 +1558,19 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
               ...vm.logs.take(140).map((entry) {
                 return ListTile(
                   dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: 4,
+                  ),
                   visualDensity: VisualDensity.compact,
                   minTileHeight: 42,
                   title: Text(entry.message),
-                  subtitle: Text('${entry.type.name.toUpperCase()} | ${DateFormat('dd MMM HH:mm').format(entry.ts)}'),
-                  trailing: entry.amount == null ? null : Text(vm.asCurrency(entry.amount!)),
+                  subtitle: Text(
+                    '${entry.type.name.toUpperCase()} | ${DateFormat('dd MMM HH:mm').format(entry.ts)}',
+                  ),
+                  trailing: entry.amount == null
+                      ? null
+                      : Text(vm.asCurrency(entry.amount!)),
                 );
               }),
           ],
@@ -1407,14 +1609,17 @@ class _SectionHead extends StatelessWidget {
         const SizedBox(height: AppSpacing.xs),
         Text(
           subtitle,
-          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant, height: 1.3),
+          style: text.bodySmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+            height: 1.3,
+          ),
         ),
       ],
     );
   }
 }
 
-class _HeroPanel extends StatelessWidget {
+class _HeroPanel extends StatefulWidget {
   const _HeroPanel({
     required this.compact,
     required this.monthLabel,
@@ -1432,183 +1637,348 @@ class _HeroPanel extends StatelessWidget {
   final List<Widget> chips;
 
   @override
+  State<_HeroPanel> createState() => _HeroPanelState();
+}
+
+class _HeroPanelState extends State<_HeroPanel> with TickerProviderStateMixin {
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: EdgeInsets.all(compact ? AppSpacing.md : AppSpacing.panel),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        color: AppSurfaceTint.card(scheme),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: compact ? 0.24 : 0.32)),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            right: compact ? -6 : -18,
-            top: compact ? -6 : -12,
-            child: Container(
-              width: compact ? 56 : 112,
-              height: compact ? 56 : 112,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: scheme.primary.withValues(alpha: compact ? 0.05 : 0.08),
+    return AnimatedSize(
+      duration: AppDuration.medium,
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.topCenter,
+      child: AnimatedSwitcher(
+        duration: AppDuration.medium,
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final fade = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+          );
+          final slide =
+              Tween<Offset>(
+                begin: const Offset(0, 0.04),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              );
+
+          return FadeTransition(
+            opacity: fade,
+            child: SlideTransition(position: slide, child: child),
+          );
+        },
+        child: Container(
+          key: ValueKey(widget.compact),
+          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          padding: EdgeInsets.all(
+            widget.compact ? AppSpacing.md : AppSpacing.panel,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            color: widget.compact
+                ? scheme.surfaceContainerHigh
+                : scheme.surfaceContainerLow,
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(
+                alpha: widget.compact ? 0.24 : 0.32,
               ),
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              Row(
+              Positioned(
+                right: widget.compact ? -6 : -18,
+                top: widget.compact ? -6 : -12,
+                child: AnimatedContainer(
+                  duration: AppDuration.medium,
+                  curve: Curves.easeOutCubic,
+                  width: widget.compact ? 56 : 112,
+                  height: widget.compact ? 56 : 112,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: scheme.primary.withValues(
+                      alpha: widget.compact ? 0.05 : 0.08,
+                    ),
+                  ),
+                ),
+              ),
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: EdgeInsets.all(compact ? AppSpacing.xs + 1 : AppSpacing.sm + 1),
-                    decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.auto_graph_outlined,
-                      color: scheme.primary,
-                      size: compact ? 16 : 22,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: compact ? 3 : 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AnimatedContainer(
+                        duration: AppDuration.medium,
+                        curve: Curves.easeOutCubic,
+                        padding: EdgeInsets.all(
+                          widget.compact
+                              ? AppSpacing.xs + 1
+                              : AppSpacing.sm + 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.auto_graph_outlined,
+                          color: scheme.primary,
+                          size: widget.compact ? 16 : 22,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: widget.compact ? 3 : 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: scheme.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.full,
+                                ),
+                              ),
+                              child: Text(
+                                widget.monthLabel,
+                                style: text.labelSmall?.copyWith(
+                                  color: scheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              widget.title,
+                              maxLines: widget.compact ? 1 : 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: text.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
+                                fontSize: widget.compact ? 16 : null,
+                              ),
+                            ),
+                            if (widget.compact) ...[
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xs,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: scheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.full,
+                                  ),
+                                ),
+                                child: Text(
+                                  widget.subtitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: text.labelSmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.1,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (widget.compact) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        AnimatedContainer(
+                          duration: AppDuration.medium,
+                          curve: Curves.easeOutCubic,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm + 1,
+                            vertical: AppSpacing.xs + 1,
+                          ),
                           decoration: BoxDecoration(
-                            color: scheme.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(AppRadius.full),
-                          ),
-                          child: Text(
-                            monthLabel,
-                            style: text.labelSmall?.copyWith(
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
+                            color: scheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                            border: Border.all(
+                              color: scheme.outlineVariant.withValues(
+                                alpha: 0.32,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          title,
-                          maxLines: compact ? 1 : 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                            fontSize: compact ? 16 : null,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.savings_outlined,
+                                    size: 13,
+                                    color: scheme.primary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Total',
+                                    style: text.labelSmall?.copyWith(
+                                      color: scheme.onSecondaryContainer,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                widget.value,
+                                style: text.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  color: scheme.onSecondaryContainer,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        if (compact) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: text.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              height: 1.2,
-                            ),
-                          ),
-                        ],
                       ],
-                    ),
+                    ],
                   ),
-                  if (compact) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Total',
-                          style: text.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          value,
-                          style: text.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-              if (!compact) ...[
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  value,
-                  style: text.headlineMedium?.copyWith(
+                  if (!widget.compact) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      widget.value,
+                      style: text.headlineMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.5,
                       ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  subtitle,
-                  style: text.bodySmall?.copyWith(
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      widget.subtitle,
+                      style: text.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                         height: 1.35,
                       ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(compact ? AppSpacing.xs + 2 : AppSpacing.sm + 1),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: compact ? 0.24 : 0.32)),
-                ),
-                child: Wrap(
-                  spacing: compact ? 6 : AppSpacing.xs,
-                  runSpacing: compact ? 6 : AppSpacing.xs,
-                  children: chips,
-                ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  AnimatedContainer(
+                    duration: AppDuration.medium,
+                    curve: Curves.easeOutCubic,
+                    width: double.infinity,
+                    padding: EdgeInsets.all(
+                      widget.compact ? AppSpacing.xs + 2 : AppSpacing.sm + 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(
+                        color: scheme.outlineVariant.withValues(
+                          alpha: widget.compact ? 0.24 : 0.32,
+                        ),
+                      ),
+                    ),
+                    child: Wrap(
+                      spacing: widget.compact ? 6 : AppSpacing.xs,
+                      runSpacing: widget.compact ? 6 : AppSpacing.xs,
+                      children: widget.chips,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
+enum _HeaderChipTone { neutral, info, success, warning }
+
 class _HeaderChip extends StatelessWidget {
-  const _HeaderChip({required this.label, required this.icon});
+  const _HeaderChip({
+    required this.label,
+    required this.icon,
+    this.tone = _HeaderChipTone.neutral,
+  });
 
   final String label;
   final IconData icon;
+  final _HeaderChipTone tone;
+
+  Color _chipContainer(ColorScheme scheme) {
+    switch (tone) {
+      case _HeaderChipTone.info:
+        return scheme.primaryContainer;
+      case _HeaderChipTone.success:
+        return scheme.tertiaryContainer;
+      case _HeaderChipTone.warning:
+        return scheme.errorContainer;
+      case _HeaderChipTone.neutral:
+        return scheme.surfaceContainerHighest;
+    }
+  }
+
+  Color _chipForeground(ColorScheme scheme) {
+    switch (tone) {
+      case _HeaderChipTone.info:
+        return scheme.onPrimaryContainer;
+      case _HeaderChipTone.success:
+        return scheme.onTertiaryContainer;
+      case _HeaderChipTone.warning:
+        return scheme.onErrorContainer;
+      case _HeaderChipTone.neutral:
+        return scheme.onSurfaceVariant;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return ActionChip(
-      avatar: Icon(icon, size: 16, color: scheme.onSecondaryContainer),
-      backgroundColor: scheme.secondaryContainer,
-      label: Text(label),
-      onPressed: () {},
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: 2),
-      labelStyle: TextStyle(
-        color: scheme.onSecondaryContainer,
-        fontWeight: FontWeight.w700,
+    final text = Theme.of(context).textTheme;
+    final container = _chipContainer(scheme);
+    final foreground = _chipForeground(scheme);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
       ),
-      side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.42)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        color: container,
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: foreground.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 14, color: foreground),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            label,
+            style: text.labelSmall?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1633,17 +2003,28 @@ class _ExpenseRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.28),
+        ),
       ),
       child: ListTile(
         dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-        title: Text(name, style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        title: Text(
+          name,
+          style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
         subtitle: Text(
           amount,
           style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
         ),
-        trailing: IconButton(onPressed: onDelete, icon: const Icon(Icons.delete_outline)),
+        trailing: IconButton(
+          onPressed: onDelete,
+          icon: const Icon(Icons.delete_outline),
+        ),
       ),
     );
   }
@@ -1659,26 +2040,29 @@ class _EmptyInline extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 1),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm + 1,
+      ),
       decoration: BoxDecoration(
         color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.28),
+        ),
       ),
       child: Text(
         message,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
       ),
     );
   }
 }
 
 class _GlassCard extends StatelessWidget {
-  const _GlassCard({
-    required this.child,
-    this.margin,
-    this.color,
-  });
+  const _GlassCard({required this.child, this.margin, this.color});
 
   final Widget child;
   final EdgeInsetsGeometry? margin;
@@ -1693,7 +2077,9 @@ class _GlassCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl),
         color: color ?? AppSurfaceTint.card(scheme),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.28),
+        ),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -1704,10 +2090,7 @@ class _GlassCard extends StatelessWidget {
 }
 
 class _KpiTile extends StatelessWidget {
-  const _KpiTile({
-    required this.label,
-    required this.value,
-  });
+  const _KpiTile({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -1720,7 +2103,10 @@ class _KpiTile extends StatelessWidget {
     final icon = _kpiIconForLabel(label);
     return Container(
       margin: EdgeInsets.zero,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 1),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm + 1,
+      ),
       decoration: BoxDecoration(
         color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -1808,8 +2194,9 @@ class _MiniTrendBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final ratio =
-        maxValue <= 0 ? 0.0 : (value / maxValue).clamp(0, 1).toDouble();
+    final ratio = maxValue <= 0
+        ? 0.0
+        : (value / maxValue).clamp(0, 1).toDouble();
     return _SquigglyProgressBar(
       value: ratio,
       height: AppSpacing.compact,
@@ -1931,10 +2318,15 @@ class _DataMetric extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppSurfaceTint.card(scheme),
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.28),
+          ),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm + 1, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm + 1,
+            vertical: AppSpacing.sm,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
