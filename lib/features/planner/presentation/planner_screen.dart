@@ -315,6 +315,7 @@ class _PlannerTabState extends State<_PlannerTab> {
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 108),
       children: [
         _HeroPanel(
+          compact: _section != 0,
           monthLabel: 'Month #${vm.monthsProcessed}',
           title: 'Monthly finance snapshot',
           value: vm.asCurrency(vm.totalSavingsWithCurrentExcess),
@@ -1166,9 +1167,9 @@ class _PlannerRun extends StatelessWidget {
                   ...vm.purchaseHistory.take(8).map(
                         (entry) => ListTile(
                           dense: true,
-                          contentPadding: EdgeInsets.zero,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
                           visualDensity: VisualDensity.compact,
-                          minTileHeight: 34,
+                            minTileHeight: 42,
                           title: Text(entry.goalName),
                           subtitle: Text(DateFormat('dd MMM yyyy').format(entry.purchasedAt)),
                           trailing: Text(vm.asCurrency(entry.amount)),
@@ -1209,6 +1210,7 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 108),
       children: [
         _HeroPanel(
+          compact: false,
           monthLabel: 'Analytics',
           title: 'Activity snapshot',
           value: '${vm.logs.length} events',
@@ -1318,9 +1320,9 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
                   final amount = trendByMonth[key] ?? 0;
                   return ListTile(
                     dense: true,
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
                     visualDensity: VisualDensity.compact,
-                    minTileHeight: 34,
+                    minTileHeight: 42,
                     title: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1361,9 +1363,9 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
               ...vm.logs.take(140).map((entry) {
                 return ListTile(
                   dense: true,
-                  contentPadding: EdgeInsets.zero,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
                   visualDensity: VisualDensity.compact,
-                  minTileHeight: 34,
+                  minTileHeight: 42,
                   title: Text(entry.message),
                   subtitle: Text('${entry.type.name.toUpperCase()} | ${DateFormat('dd MMM HH:mm').format(entry.ts)}'),
                   trailing: entry.amount == null ? null : Text(vm.asCurrency(entry.amount!)),
@@ -1414,6 +1416,7 @@ class _SectionHead extends StatelessWidget {
 
 class _HeroPanel extends StatelessWidget {
   const _HeroPanel({
+    required this.compact,
     required this.monthLabel,
     required this.title,
     required this.value,
@@ -1421,6 +1424,7 @@ class _HeroPanel extends StatelessWidget {
     required this.chips,
   });
 
+  final bool compact;
   final String monthLabel;
   final String title;
   final String value;
@@ -1434,24 +1438,24 @@ class _HeroPanel extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.panel),
+      padding: EdgeInsets.all(compact ? AppSpacing.md : AppSpacing.panel),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl),
         color: AppSurfaceTint.card(scheme),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.32)),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: compact ? 0.24 : 0.32)),
       ),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Positioned(
-            right: -18,
-            top: -12,
+            right: compact ? -6 : -18,
+            top: compact ? -6 : -12,
             child: Container(
-              width: 112,
-              height: 112,
+              width: compact ? 56 : 112,
+              height: compact ? 56 : 112,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: scheme.primary.withValues(alpha: 0.08),
+                color: scheme.primary.withValues(alpha: compact ? 0.05 : 0.08),
               ),
             ),
           ),
@@ -1462,7 +1466,7 @@ class _HeroPanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(AppSpacing.sm + 1),
+                    padding: EdgeInsets.all(compact ? AppSpacing.xs + 1 : AppSpacing.sm + 1),
                     decoration: BoxDecoration(
                       color: scheme.primary.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
@@ -1470,7 +1474,7 @@ class _HeroPanel extends StatelessWidget {
                     child: Icon(
                       Icons.auto_graph_outlined,
                       color: scheme.primary,
-                      size: 22,
+                      size: compact ? 16 : 22,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
@@ -1479,7 +1483,7 @@ class _HeroPanel extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                          padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: compact ? 3 : 4),
                           decoration: BoxDecoration(
                             color: scheme.primary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(AppRadius.full),
@@ -1493,49 +1497,87 @@ class _HeroPanel extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (title.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.sm),
+                        const SizedBox(height: 6),
+                        Text(
+                          title,
+                          maxLines: compact ? 1 : 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                            fontSize: compact ? 16 : null,
+                          ),
+                        ),
+                        if (compact) ...[
+                          const SizedBox(height: 4),
                           Text(
-                            title,
-                            style: text.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.3,
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              height: 1.2,
                             ),
                           ),
                         ],
                       ],
                     ),
                   ),
+                  if (compact) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Total',
+                          style: text.labelSmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          value,
+                          style: text.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                value,
-                style: text.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                subtitle,
-                style: text.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      height: 1.35,
-                    ),
-              ),
-              const SizedBox(height: AppSpacing.md),
+              if (!compact) ...[
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  value,
+                  style: text.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  subtitle,
+                  style: text.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.sm + 1),
+                padding: EdgeInsets.all(compact ? AppSpacing.xs + 2 : AppSpacing.sm + 1),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.32)),
+                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: compact ? 0.24 : 0.32)),
                 ),
                 child: Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
+                  spacing: compact ? 6 : AppSpacing.xs,
+                  runSpacing: compact ? 6 : AppSpacing.xs,
                   children: chips,
                 ),
               ),
