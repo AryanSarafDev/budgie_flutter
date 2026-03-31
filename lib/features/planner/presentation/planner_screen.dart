@@ -315,6 +315,10 @@ class _PlannerTabState extends State<_PlannerTab> {
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 108),
       children: [
         _HeroPanel(
+          monthLabel: 'Month #${vm.monthsProcessed}',
+          title: 'Monthly finance snapshot',
+          value: vm.asCurrency(vm.totalSavingsWithCurrentExcess),
+          subtitle: 'Salary, spending, and runway at a glance.',
           chips: [
             _HeaderChip(label: 'Month #${vm.monthsProcessed}', icon: Icons.calendar_month),
             _HeaderChip(label: 'Cloud ${vm.cloudStatus.toUpperCase()}', icon: Icons.cloud_done_outlined),
@@ -331,24 +335,35 @@ class _PlannerTabState extends State<_PlannerTab> {
           ),
         _GlassCard(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SegmentedButton<int>(
-                segments: List.generate(
-                  titles.length,
-                  (index) => ButtonSegment<int>(
-                    value: index,
-                    icon: Icon(icons[index], size: 18),
-                    label: Text(titles[index]),
+            padding: const EdgeInsets.all(AppSpacing.panel),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _SectionHead(
+                  title: 'Sections',
+                  subtitle: 'Move between overview, expenses, goals, and more.',
+                  icon: Icons.explore_outlined,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SegmentedButton<int>(
+                    segments: List.generate(
+                      titles.length,
+                      (index) => ButtonSegment<int>(
+                        value: index,
+                        icon: Icon(icons[index], size: 18),
+                        label: Text(titles[index]),
+                      ),
+                    ),
+                    selected: <int>{_section},
+                    onSelectionChanged: (selection) {
+                      setState(() => _section = selection.first);
+                    },
+                    showSelectedIcon: false,
                   ),
                 ),
-                selected: <int>{_section},
-                onSelectionChanged: (selection) {
-                  setState(() => _section = selection.first);
-                },
-                showSelectedIcon: false,
-              ),
+              ],
             ),
           ),
         ),
@@ -393,9 +408,6 @@ class _PlannerOverview extends StatelessWidget {
     final savingsRate = vm.salary <= 0
         ? 0.0
         : (vm.monthlyPool / vm.salary).clamp(0, 1).toDouble();
-    final availableRatio = vm.monthlyPool <= 0
-        ? 0.0
-        : (vm.availableMonthExcess / vm.monthlyPool).clamp(0, 1).toDouble();
 
     final healthLabel = expenseRatio >= 0.9
         ? 'Pressure'
@@ -413,17 +425,6 @@ class _PlannerOverview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _OverviewHeroCard(
-            monthLabel: 'Month #${vm.monthsProcessed}',
-            title: 'Monthly snapshot',
-            value: vm.asCurrency(vm.totalSavingsWithCurrentExcess),
-            subtitle: 'Total position after expenses and current month excess.',
-            healthLabel: healthLabel,
-            healthColor: healthColor,
-            savingsRate: savingsRate,
-            expenseRatio: expenseRatio,
-          ),
-          const SizedBox(height: AppSpacing.md),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
@@ -507,63 +508,6 @@ class _PlannerOverview extends StatelessWidget {
                     leftColor: scheme.tertiary,
                     rightColor: scheme.secondary,
                     format: vm.asCurrency,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          _GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.panel),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionHead(
-                    title: 'Salary Baseline',
-                    subtitle: 'Update salary and review monthly totals.',
-                    icon: Icons.account_balance_outlined,
-                  ),
-                  const SizedBox(height: AppSpacing.panel),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: vm.salaryCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Monthly Salary',
-                            prefixIcon: Icon(Icons.payments_outlined),
-                          ),
-                          onSubmitted: (_) => vm.updateSalaryFromInput(),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      FilledButton.icon(
-                        onPressed: vm.updateSalaryFromInput,
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: const Text('Update'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _DataMetric(label: 'Expenses', value: vm.asCurrency(vm.monthlyExpenseTotal)),
-                      _DataMetric(label: 'Savings Pool', value: vm.asCurrency(vm.monthlyPool)),
-                      _DataMetric(label: 'Available', value: vm.asCurrency(vm.availableMonthExcess)),
-                      _DataMetric(
-                        label: 'Total Position',
-                        value: vm.asCurrency(vm.totalSavingsWithCurrentExcess),
-                        wide: true,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm + AppSpacing.xxs),
-                  _MiniTrendBar(
-                    value: availableRatio,
-                    maxValue: 1,
                   ),
                 ],
               ),
@@ -703,128 +647,6 @@ class _OverviewSplitBar extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _OverviewHeroCard extends StatelessWidget {
-  const _OverviewHeroCard({
-    required this.monthLabel,
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.healthLabel,
-    required this.healthColor,
-    required this.savingsRate,
-    required this.expenseRatio,
-  });
-
-  final String monthLabel;
-  final String title;
-  final String value;
-  final String subtitle;
-  final String healthLabel;
-  final Color healthColor;
-  final double savingsRate;
-  final double expenseRatio;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-
-    return _GlassCard(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.panel),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        monthLabel,
-                        style: text.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        title,
-                        style: text.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        subtitle,
-                        style: text.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.insights_outlined,
-                    color: scheme.primary,
-                    size: 22,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: text.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                _OverviewStatusPill(
-                  icon: Icons.favorite_outline,
-                  label: 'Health',
-                  value: healthLabel,
-                  color: healthColor,
-                ),
-                _OverviewStatusPill(
-                  icon: Icons.percent,
-                  label: 'Savings',
-                  value: '${(savingsRate * 100).toStringAsFixed(1)}%',
-                  color: scheme.primary,
-                ),
-                _OverviewStatusPill(
-                  icon: Icons.speed_outlined,
-                  label: 'Burn',
-                  value: '${(expenseRatio * 100).toStringAsFixed(1)}%',
-                  color: scheme.tertiary,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -1387,6 +1209,10 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 108),
       children: [
         _HeroPanel(
+          monthLabel: 'Analytics',
+          title: 'Activity snapshot',
+          value: '${vm.logs.length} events',
+          subtitle: 'Recent expenses, purchases, and planner activity.',
           chips: const [
             _HeaderChip(label: 'Snapshot', icon: Icons.dashboard_outlined),
             _HeaderChip(label: 'Trend', icon: Icons.timeline),
@@ -1588,23 +1414,135 @@ class _SectionHead extends StatelessWidget {
 
 class _HeroPanel extends StatelessWidget {
   const _HeroPanel({
+    required this.monthLabel,
+    required this.title,
+    required this.value,
+    required this.subtitle,
     required this.chips,
   });
 
+  final String monthLabel;
+  final String title;
+  final String value;
+  final String subtitle;
   final List<Widget> chips;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.fromLTRB(AppSpacing.lg + 2, AppSpacing.lg + 2, AppSpacing.lg + 2, AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.panel),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl),
         color: AppSurfaceTint.card(scheme),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.32)),
       ),
-      child: Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: chips),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            right: -18,
+            top: -12,
+            child: Container(
+              width: 112,
+              height: 112,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: scheme.primary.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.sm + 1),
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.auto_graph_outlined,
+                      color: scheme.primary,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                          ),
+                          child: Text(
+                            monthLabel,
+                            style: text.labelSmall?.copyWith(
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                        ),
+                        if (title.isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            title,
+                            style: text.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                value,
+                style: text.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                subtitle,
+                style: text.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      height: 1.35,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.sm + 1),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.32)),
+                ),
+                child: Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
+                  children: chips,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1623,11 +1561,12 @@ class _HeaderChip extends StatelessWidget {
       backgroundColor: scheme.secondaryContainer,
       label: Text(label),
       onPressed: () {},
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: 2),
       labelStyle: TextStyle(
         color: scheme.onSecondaryContainer,
         fontWeight: FontWeight.w700,
       ),
-      side: BorderSide.none,
+      side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.42)),
     );
   }
 }
@@ -1652,10 +1591,11 @@ class _ExpenseRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: ListTile(
         dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm + 2, vertical: AppSpacing.xs),
+        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
         title: Text(name, style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
         subtitle: Text(
           amount,
@@ -1677,10 +1617,11 @@ class _EmptyInline extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 1),
       decoration: BoxDecoration(
         color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: Text(
         message,
@@ -1710,6 +1651,7 @@ class _GlassCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl),
         color: color ?? AppSurfaceTint.card(scheme),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -1736,11 +1678,11 @@ class _KpiTile extends StatelessWidget {
     final icon = _kpiIconForLabel(label);
     return Container(
       margin: EdgeInsets.zero,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 1),
       decoration: BoxDecoration(
         color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: accent.withValues(alpha: 0.16)),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1750,7 +1692,7 @@ class _KpiTile extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
+                  color: accent.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 14, color: accent),
@@ -1947,20 +1889,27 @@ class _DataMetric extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppSurfaceTint.card(scheme),
           borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
         ),
-        child: ListTile(
-          dense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm + 2, vertical: AppSpacing.xs),
-          title: Text(
-            label,
-            style: text.labelSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-          subtitle: Text(
-            value,
-            style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm + 1, vertical: AppSpacing.sm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: text.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                value,
+                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
         ),
       ),
