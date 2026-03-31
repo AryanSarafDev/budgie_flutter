@@ -41,9 +41,24 @@ pubspec_overrides.yaml
 .env.*
 !.env.example
 
+# Firebase local tooling artifacts
+.firebase/
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+pubsub-debug.log
+ui-debug.log
+
 # Local tool/version manager files
 .fvm/
 .melos_tool/
+
+# Common local editor/temp files
+*.tmp
+*.temp
+*.orig
+*.rej
+**/.DS_Store
 
 # Test and profiling artifacts
 *.lcov
@@ -71,6 +86,10 @@ app.*.map.json
 android/key.properties
 ios/ExportOptions.plist
 
-# Optional Firebase config (uncomment if you keep platform config files out of git)
-# android/app/google-services.json
-# ios/Runner/GoogleService-Info.plist
+# Firebase config files (kept out of git)
+firebase.json
+lib/firebase_options.dart
+android/app/google-services.json
+android/app/src/**/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
