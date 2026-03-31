@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:budgie_flutter/core/constants/app_constants.dart';
+import 'package:budgie_flutter/core/theme/app_surface_tint.dart';
 import 'package:budgie_flutter/core/theme/app_tokens.dart';
 import 'package:budgie_flutter/core/utils/helpers.dart';
 import 'package:budgie_flutter/features/planner/application/planner_state.dart';
@@ -264,7 +265,7 @@ class _ModernBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return ColoredBox(color: scheme.surface);
+    return ColoredBox(color: AppSurfaceTint.background(scheme));
   }
 }
 
@@ -297,9 +298,6 @@ class _PlannerTabState extends State<_PlannerTab> {
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 108),
       children: [
         _HeroPanel(
-          title: 'Budgie Financial Desk',
-          subtitle:
-              'Work one section at a time for clarity: update base numbers, manage expenses, then allocate and execute.',
           chips: [
             _HeaderChip(label: 'Month #${vm.monthsProcessed}', icon: Icons.calendar_month),
             _HeaderChip(label: 'Cloud ${vm.cloudStatus.toUpperCase()}', icon: Icons.cloud_done_outlined),
@@ -314,29 +312,26 @@ class _PlannerTabState extends State<_PlannerTab> {
               child: Text(vm.authError),
             ),
           ),
-        Container(
-          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-          ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SegmentedButton<int>(
-              segments: List.generate(
-                titles.length,
-                (index) => ButtonSegment<int>(
-                  value: index,
-                  icon: Icon(icons[index], size: 18),
-                  label: Text(titles[index]),
+        _GlassCard(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<int>(
+                segments: List.generate(
+                  titles.length,
+                  (index) => ButtonSegment<int>(
+                    value: index,
+                    icon: Icon(icons[index], size: 18),
+                    label: Text(titles[index]),
+                  ),
                 ),
+                selected: <int>{_section},
+                onSelectionChanged: (selection) {
+                  setState(() => _section = selection.first);
+                },
+                showSelectedIcon: false,
               ),
-              selected: <int>{_section},
-              onSelectionChanged: (selection) {
-                setState(() => _section = selection.first);
-              },
-              showSelectedIcon: false,
             ),
           ),
         ),
@@ -384,9 +379,6 @@ class _PlannerOverview extends StatelessWidget {
     final availableRatio = vm.monthlyPool <= 0
         ? 0.0
         : (vm.availableMonthExcess / vm.monthlyPool).clamp(0, 1).toDouble();
-    final spentRatio = vm.monthlyPool <= 0
-        ? 0.0
-        : (vm.monthPoolSpent / vm.monthlyPool).clamp(0, 1).toDouble();
 
     final healthLabel = expenseRatio >= 0.9
         ? 'Pressure'
@@ -405,31 +397,28 @@ class _PlannerOverview extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
               SizedBox(
                 width: cardWidth,
                 child: _KpiTile(
-                  label: 'Savings Pool',
+                  label: 'Pool',
                   value: vm.asCurrency(vm.monthlyPool),
-                  icon: Icons.account_balance_wallet_outlined,
                 ),
               ),
               SizedBox(
                 width: cardWidth,
                 child: _KpiTile(
-                  label: 'Total Saved',
+                  label: 'Saved',
                   value: vm.asCurrency(vm.totalSavingsWithCurrentExcess),
-                  icon: Icons.ssid_chart,
                 ),
               ),
               SizedBox(
                 width: cardWidth,
                 child: _KpiTile(
-                  label: 'Purchase Spend',
+                  label: 'Spent',
                   value: vm.asCurrency(vm.spentOnPurchases),
-                  icon: Icons.shopping_bag_outlined,
                 ),
               ),
             ],
@@ -442,8 +431,8 @@ class _PlannerOverview extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const _SectionHead(
-                    title: 'Overview Command Deck',
-                    subtitle: 'Track spend pressure, available runway, and savings quality at a glance.',
+                    title: 'Overview',
+                    subtitle: 'Health, burn, and runway at a glance.',
                     icon: Icons.space_dashboard_outlined,
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -502,8 +491,8 @@ class _PlannerOverview extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const _SectionHead(
-                    title: 'Finance Overview',
-                    subtitle: 'Set salary first. Everything else derives from this baseline.',
+                    title: 'Salary Baseline',
+                    subtitle: 'Update salary and review monthly totals.',
                     icon: Icons.account_balance_outlined,
                   ),
                   const SizedBox(height: AppSpacing.panel),
@@ -536,7 +525,6 @@ class _PlannerOverview extends StatelessWidget {
                       _DataMetric(label: 'Expenses', value: vm.asCurrency(vm.monthlyExpenseTotal)),
                       _DataMetric(label: 'Savings Pool', value: vm.asCurrency(vm.monthlyPool)),
                       _DataMetric(label: 'Available', value: vm.asCurrency(vm.availableMonthExcess)),
-                      _DataMetric(label: 'Extra Savings', value: vm.asCurrency(vm.extraSavings)),
                       _DataMetric(
                         label: 'Total Position',
                         value: vm.asCurrency(vm.totalSavingsWithCurrentExcess),
@@ -548,53 +536,6 @@ class _PlannerOverview extends StatelessWidget {
                   _MiniTrendBar(
                     value: availableRatio,
                     maxValue: 1,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          _GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.panel),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _SectionHead(
-                    title: 'Signal Grid',
-                    subtitle: 'Compact indicators for quick financial posture checks.',
-                    icon: Icons.grid_view_rounded,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      _OverviewMetricTile(
-                        label: 'Allocation Applied',
-                        value: '${vm.allocation.fixedPercentApplied.toStringAsFixed(1)}%',
-                        icon: Icons.rule_folder_outlined,
-                      ),
-                      _OverviewMetricTile(
-                        label: 'Allocation Scaling',
-                        value: vm.allocation.scalingApplied ? 'Enabled' : 'Normal',
-                        icon: Icons.tune,
-                      ),
-                      _OverviewMetricTile(
-                        label: 'Active Goals',
-                        value: '${vm.goals.length}',
-                        icon: Icons.flag_circle_outlined,
-                      ),
-                      _OverviewMetricTile(
-                        label: 'Runway In Pool',
-                        value: '${(availableRatio * 100).toStringAsFixed(1)}%',
-                        icon: Icons.waterfall_chart,
-                      ),
-                      _OverviewMetricTile(
-                        label: 'Pool Consumed',
-                        value: '${(spentRatio * 100).toStringAsFixed(1)}%',
-                        icon: Icons.pie_chart_outline,
-                      ),
-                    ],
                   ),
                 ],
               ),
@@ -726,59 +667,6 @@ class _OverviewSplitBar extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _OverviewMetricTile extends StatelessWidget {
-  const _OverviewMetricTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return Container(
-      width: 118,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 12, color: scheme.onSurfaceVariant),
-              const SizedBox(width: AppSpacing.compact),
-              Expanded(
-                child: Text(
-                  label,
-                  style: text.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            style: text.titleSmall?.copyWith(
-              color: scheme.onSurface,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1341,37 +1229,32 @@ class _AnalyticsTabState extends State<_AnalyticsTab> {
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 108),
       children: [
         _HeroPanel(
-          title: 'Analytics Desk',
-          subtitle: 'Read spending outcomes and operational data through focused panels.',
           chips: const [
             _HeaderChip(label: 'Snapshot', icon: Icons.dashboard_outlined),
             _HeaderChip(label: 'Trend', icon: Icons.timeline),
             _HeaderChip(label: 'Logs', icon: Icons.list_alt_outlined),
           ],
         ),
-        Container(
-          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-          ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SegmentedButton<int>(
-              segments: List.generate(
-                sections.length,
-                (index) => ButtonSegment<int>(
-                  value: index,
-                  icon: Icon(icons[index], size: 18),
-                  label: Text(sections[index]),
+        _GlassCard(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<int>(
+                segments: List.generate(
+                  sections.length,
+                  (index) => ButtonSegment<int>(
+                    value: index,
+                    icon: Icon(icons[index], size: 18),
+                    label: Text(sections[index]),
+                  ),
                 ),
+                selected: <int>{_section},
+                onSelectionChanged: (selection) {
+                  setState(() => _section = selection.first);
+                },
+                showSelectedIcon: false,
               ),
-              selected: <int>{_section},
-              onSelectionChanged: (selection) {
-                setState(() => _section = selection.first);
-              },
-              showSelectedIcon: false,
             ),
           ),
         ),
@@ -1547,49 +1430,31 @@ class _SectionHead extends StatelessWidget {
 
 class _HeroPanel extends StatelessWidget {
   const _HeroPanel({
-    required this.title,
-    required this.subtitle,
     required this.chips,
   });
 
-  final String title;
-  final String subtitle;
   final List<Widget> chips;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
+    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.24 : 0.1;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.fromLTRB(AppSpacing.lg + 2, AppSpacing.lg + 2, AppSpacing.lg + 2, AppSpacing.lg),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        color: scheme.primaryContainer,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: text.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: scheme.onPrimaryContainer,
-            ),
+        color: AppSurfaceTint.card(scheme),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: shadowAlpha),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            subtitle,
-            style: text.bodyMedium?.copyWith(
-              color: scheme.onPrimaryContainer.withValues(alpha: 0.9),
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: chips),
         ],
       ),
+      child: Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: chips),
     );
   }
 }
@@ -1632,11 +1497,19 @@ class _ExpenseRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.08;
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainer,
+        color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.md),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: shadowAlpha),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ListTile(
         dense: true,
@@ -1660,13 +1533,20 @@ class _EmptyInline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.08;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainer,
+        color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: scheme.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: shadowAlpha),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
         message,
@@ -1690,12 +1570,20 @@ class _GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.24 : 0.1;
     return AnimatedContainer(
       duration: AppDuration.short,
       margin: margin ?? const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        color: color ?? scheme.surfaceContainerLow,
+        color: color ?? AppSurfaceTint.card(scheme),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: shadowAlpha),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -1709,45 +1597,47 @@ class _KpiTile extends StatelessWidget {
   const _KpiTile({
     required this.label,
     required this.value,
-    required this.icon,
   });
 
   final String label;
   final String value;
-  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.08;
     return Container(
       margin: EdgeInsets.zero,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + AppSpacing.xs),
       decoration: BoxDecoration(
-        color: scheme.primaryContainer.withValues(alpha: 0.4),
+        color: AppSurfaceTint.card(scheme),
         borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: shadowAlpha),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: ListTile(
-        dense: true,
-        leading: CircleAvatar(
-          radius: 16,
-          backgroundColor: scheme.secondaryContainer,
-          child: Icon(icon, color: scheme.onSecondaryContainer, size: 16),
-        ),
-        title: Text(
-          label,
-          style: text.labelSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurfaceVariant,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
-        ),
-        subtitle: AnimatedSwitcher(
-          duration: AppDuration.medium,
-          child: Text(
-            value,
-            key: ValueKey(value),
-            style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+          const SizedBox(height: AppSpacing.xs),
+          AnimatedSwitcher(
+            duration: AppDuration.medium,
+            child: Text(
+              value,
+              key: ValueKey(value),
+              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1878,13 +1768,21 @@ class _DataMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final shadowAlpha = Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.08;
     return SizedBox(
       width: wide ? AppSize.metricWide : AppSize.metricCompact,
       child: Container(
         margin: EdgeInsets.zero,
         decoration: BoxDecoration(
-          color: scheme.surfaceContainer,
+          color: AppSurfaceTint.card(scheme),
           borderRadius: BorderRadius.circular(AppRadius.md),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.shadow.withValues(alpha: shadowAlpha),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: ListTile(
           dense: true,

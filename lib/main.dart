@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:budgie_flutter/app/bootstrap/firebase_bootstrap.dart';
+import 'package:budgie_flutter/core/theme/app_surface_tint.dart';
 import 'package:budgie_flutter/core/theme/app_tokens.dart';
 import 'package:budgie_flutter/features/planner/application/planner_view_model.dart';
 import 'package:budgie_flutter/features/planner/presentation/planner_screen.dart';
@@ -81,10 +82,10 @@ class BudgieApp extends StatelessWidget {
         );
 
     return base.copyWith(
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: AppSurfaceTint.background(scheme),
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
-        backgroundColor: scheme.surface,
+        backgroundColor: AppSurfaceTint.background(scheme),
         elevation: 0,
         centerTitle: false,
         foregroundColor: scheme.onSurface,
@@ -92,7 +93,7 @@ class BudgieApp extends StatelessWidget {
       ),
       cardTheme: CardThemeData(
         elevation: 1,
-        color: scheme.surfaceContainerHigh,
+        color: AppSurfaceTint.card(scheme),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
@@ -170,7 +171,7 @@ class BudgieApp extends StatelessWidget {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest,
+        fillColor: scheme.surfaceContainerHigh,
         contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
