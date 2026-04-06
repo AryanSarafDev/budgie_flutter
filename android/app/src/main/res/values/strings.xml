@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="daily_spend_widget_description">Track and add daily spending from home screen</string>
+    <string name="daily_spend_mini_widget_description">Quick add spending from home screen</string>
+    <string name="daily_spend_widget_title">Budgie Daily Spend</string>
+    <string name="daily_spend_widget_today">TODAY</string>
+    <string name="daily_spend_widget_add_spending">+ Add Spending</string>
     <string name="daily_spend_widget_no_entries">No entries yet</string>
     <string name="daily_spend_widget_pending_fmt">Pending sync: %1$d</string>
     <string name="daily_spend_widget_pending_none">Pending sync: 0</string>

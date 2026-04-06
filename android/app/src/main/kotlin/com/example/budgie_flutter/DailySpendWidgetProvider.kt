@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -14,7 +15,6 @@ import java.util.UUID
 import android.widget.RemoteViews
 import org.json.JSONArray
 import org.json.JSONObject
-import kotlin.math.roundToLong
 
 class DailySpendWidgetProvider : AppWidgetProvider() {
     companion object {
@@ -121,6 +121,7 @@ class DailySpendWidgetProvider : AppWidgetProvider() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
         views.setOnClickPendingIntent(R.id.widget_add_spending_button, pendingIntent)
     }
 
@@ -154,8 +155,8 @@ class DailySpendWidgetProvider : AppWidgetProvider() {
         val lastAddedMinor = prefs.getLong(KEY_LAST_ADDED_MINOR, 0L)
         val total = totalMinor / 100.0
         val lastAdded = lastAddedMinor / 100.0
-        val currency = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
         val pendingCount = pendingEventCount(context)
+        val currency = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
 
         views.setTextViewText(R.id.widget_total_value, currency.format(total))
         views.setTextViewText(
@@ -170,6 +171,10 @@ class DailySpendWidgetProvider : AppWidgetProvider() {
                 context.getString(R.string.daily_spend_widget_pending_none)
             },
         )
+        views.setTextColor(
+            R.id.widget_pending_value,
+            if (pendingCount > 0) Color.parseColor("#B45309") else Color.parseColor("#374151"),
+        )
     }
 
     private fun pendingEventCount(context: Context): Int {
@@ -179,7 +184,6 @@ class DailySpendWidgetProvider : AppWidgetProvider() {
             JSONArray(raw)
         } catch (_: Exception) {
             JSONArray()
-        }
-            .length()
+        }.length()
     }
 }

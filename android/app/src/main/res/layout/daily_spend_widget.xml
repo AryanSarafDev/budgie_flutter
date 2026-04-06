@@ -1,62 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF"
-    android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="8dp">
 
-    <TextView
-        android:id="@+id/widget_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Budgie Daily Spend"
-        android:textColor="#1D1B20"
-        android:textSize="14sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/widget_total_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Today"
-        android:textColor="#49454F"
-        android:textSize="11sp" />
-
-    <TextView
-        android:id="@+id/widget_total_value"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="₹0.00"
-        android:textColor="#1D1B20"
-        android:textSize="18sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/widget_last_entry_value"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="No entries yet"
-        android:textColor="#49454F"
-        android:textSize="11sp" />
-
-    <TextView
-        android:id="@+id/widget_pending_value"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="Pending sync: 0"
-        android:textColor="#49454F"
-        android:textSize="11sp" />
-
-    <Button
-        android:id="@+id/widget_add_spending_button"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="Add Spending"
-        android:textAllCaps="false" />
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@drawable/widget_card_background"
+        android:padding="12dp">
 
-</LinearLayout>
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/daily_spend_widget_title"
+            android:textColor="#1F2937"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/widget_total_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/daily_spend_widget_today"
+            android:textColor="#6B7280"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/widget_total_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="₹0"
+            android:textColor="#0B57D0"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/widget_last_entry_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/daily_spend_widget_no_entries"
+            android:textColor="#4B5563"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/widget_pending_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/widget_pending_chip_neutral"
+            android:paddingLeft="8dp"
+            android:paddingTop="3dp"
+            android:paddingRight="8dp"
+            android:paddingBottom="3dp"
+            android:text="@string/daily_spend_widget_pending_none"
+            android:textColor="#374151"
+            android:textSize="10sp" />
+
+        <Button
+            android:id="@+id/widget_add_spending_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/widget_add_button_background"
+            android:text="@string/daily_spend_widget_add_spending"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+</FrameLayout>
