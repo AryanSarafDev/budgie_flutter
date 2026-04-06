@@ -131,6 +131,7 @@ class PlannerViewModel extends Cubit<PlannerState> {
     var importedCount = 0;
     try {
       _widgetSyncInProgress = true;
+      await prefs.reload();
       importedCount = await _consumeWidgetSpendEvents(prefs);
     } finally {
       _widgetSyncInProgress = false;
@@ -170,6 +171,7 @@ class PlannerViewModel extends Cubit<PlannerState> {
     _widgetSyncInProgress = true;
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
       final importedCount = await _consumeWidgetSpendEvents(prefs);
       if (importedCount > 0) {
         _save();
@@ -258,6 +260,7 @@ class PlannerViewModel extends Cubit<PlannerState> {
       // Re-apply any pending widget events after cloud payload to avoid
       // cloud hydration overwriting widget-originated local events.
       final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
       try {
         _widgetSyncInProgress = true;
         importedFromWidgetAfterCloud = await _consumeWidgetSpendEvents(prefs);
