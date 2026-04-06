@@ -488,12 +488,12 @@ class _PlannerTabState extends State<_PlannerTab> {
   @override
   Widget build(BuildContext context) {
     final vm = widget.vm;
-    final titles = ['Overview', 'Expenses', 'Goals', 'Daily', 'Advisor', 'Run'];
+    final titles = ['Overview', 'Reccuring', 'Daily', 'Goals', 'Advisor', 'Run'];
     final icons = [
       Icons.space_dashboard_outlined,
       Icons.receipt_long_outlined,
-      Icons.flag_circle_outlined,
       Icons.calendar_today_outlined,
+      Icons.flag_circle_outlined,
       Icons.psychology_alt_outlined,
       Icons.play_circle_outline,
     ];
@@ -548,7 +548,7 @@ class _PlannerTabState extends State<_PlannerTab> {
               children: [
                 const _SectionHead(
                   title: 'Sections',
-                  subtitle: 'Move between overview, expenses, goals, and more.',
+                  subtitle: 'Move between overview, recurring, daily, goals, and more.',
                   icon: Icons.explore_outlined,
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -599,9 +599,9 @@ class _PlannerTabState extends State<_PlannerTab> {
       case 1:
         return _PlannerExpenses(vm: vm);
       case 2:
-        return _PlannerGoals(vm: vm);
-      case 3:
         return _PlannerDaily(vm: vm);
+      case 3:
+        return _PlannerGoals(vm: vm);
       case 4:
         return _PlannerAdvisor(vm: vm);
       case 5:
@@ -626,10 +626,6 @@ class _PlannerOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final width = MediaQuery.sizeOf(context).width;
-    final cardWidth = width > 900
-        ? (width - 32 - 16) / 3
-        : (width - 32 - 8) / 2;
     final expenseRatio = vm.salary <= 0
         ? 0.0
         : (vm.monthlyExpenseTotal / vm.salary).clamp(0, 1).toDouble();
@@ -658,32 +654,41 @@ class _PlannerOverview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              SizedBox(
-                width: cardWidth,
-                child: _KpiTile(
-                  label: 'Monthly Pool',
-                  value: vm.asCurrency(vm.monthlyPool),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xs,
+              vertical: AppSpacing.xs,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _OverviewStatusPill(
+                    icon: Icons.favorite_outline,
+                    label: 'Health',
+                    value: healthLabel,
+                    color: healthColor,
+                  ),
                 ),
-              ),
-              SizedBox(
-                width: cardWidth,
-                child: _KpiTile(
-                  label: 'Total Saved',
-                  value: vm.asCurrency(vm.totalSavingsWithCurrentExcess),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _OverviewStatusPill(
+                    icon: Icons.percent,
+                    label: 'Savings Rate',
+                    value: '${(savingsRate * 100).toStringAsFixed(1)}%',
+                    color: scheme.primary,
+                  ),
                 ),
-              ),
-              SizedBox(
-                width: cardWidth,
-                child: _KpiTile(
-                  label: 'Purchase Spend',
-                  value: vm.asCurrency(vm.spentOnPurchases),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _OverviewStatusPill(
+                    icon: Icons.speed_outlined,
+                    label: 'Burn Ratio',
+                    value: '${(expenseRatio * 100).toStringAsFixed(1)}%',
+                    color: scheme.tertiary,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           _GlassCard(
@@ -698,31 +703,42 @@ class _PlannerOverview extends StatelessWidget {
                     icon: Icons.space_dashboard_outlined,
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Monthly Salary',
-                              style: text.labelSmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Text(
-                              vm.salary > 0
-                                  ? vm.asCurrency(vm.salary)
-                                  : 'Not set',
-                              style: text.titleSmall?.copyWith(
-                                color: scheme.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(
+                        color: scheme.outlineVariant.withValues(alpha: 0.5),
                       ),
-                      TextButton.icon(
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Monthly Salary',
+                          style: text.labelSmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          vm.salary > 0 ? vm.asCurrency(vm.salary) : 'Not set',
+                          style: text.titleLarge?.copyWith(
+                            color: scheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      FilledButton.tonalIcon(
                         onPressed: onAddSalary,
                         icon: const Icon(Icons.add, size: 18),
                         label: const Text('Add'),
@@ -735,31 +751,13 @@ class _PlannerOverview extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _OverviewStatusPill(
-                        icon: Icons.favorite_outline,
-                        label: 'Health',
-                        value: healthLabel,
-                        color: healthColor,
-                      ),
-                      _OverviewStatusPill(
-                        icon: Icons.percent,
-                        label: 'Savings Rate',
-                        value: '${(savingsRate * 100).toStringAsFixed(1)}%',
-                        color: scheme.primary,
-                      ),
-                      _OverviewStatusPill(
-                        icon: Icons.speed_outlined,
-                        label: 'Burn Ratio',
-                        value: '${(expenseRatio * 100).toStringAsFixed(1)}%',
-                        color: scheme.tertiary,
-                      ),
-                    ],
+                  Text(
+                    'Budget Breakdown',
+                    style: text.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.xs),
                   _OverviewSplitBar(
                     leftLabel: 'Expenses',
                     rightLabel: 'Savings Pool',
@@ -807,30 +805,53 @@ class _OverviewStatusPill extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
-        vertical: 6,
+        vertical: AppSpacing.sm,
       ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.full),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: color.withValues(alpha: 0.24)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(2),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 10, color: color),
+            child: Icon(icon, size: 11, color: color),
           ),
           const SizedBox(width: AppSpacing.xs),
-          Text(
-            '$label: $value',
-            style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.labelSmall?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -936,7 +957,7 @@ class _PlannerExpenses extends StatelessWidget {
             const _SectionHead(
               title: 'Expenses',
               subtitle:
-                  'Maintain recurring outflows. This list drives your monthly pool.',
+                  'Add your recurring monthly expenses here. We use this list to calculate your monthly pool.',
               icon: Icons.receipt_outlined,
             ),
             const SizedBox(height: AppSpacing.panel),
@@ -2294,102 +2315,6 @@ class _GlassCard extends StatelessWidget {
         child: child,
       ),
     );
-  }
-}
-
-class _KpiTile extends StatelessWidget {
-  const _KpiTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    final accent = _kpiAccentForLabel(label, scheme);
-    final icon = _kpiIconForLabel(label);
-    return Container(
-      margin: EdgeInsets.zero,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm + 1,
-      ),
-      decoration: BoxDecoration(
-        color: AppSurfaceTint.card(scheme),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: accent.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 14, color: accent),
-              ),
-              const Spacer(),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.8),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            label,
-            style: text.labelSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              letterSpacing: 0.2,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          AnimatedSwitcher(
-            duration: AppDuration.medium,
-            child: Text(
-              value,
-              key: ValueKey(value),
-              style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-IconData _kpiIconForLabel(String label) {
-  switch (label) {
-    case 'Monthly Pool':
-      return Icons.savings_outlined;
-    case 'Total Saved':
-      return Icons.account_balance_wallet_outlined;
-    case 'Purchase Spend':
-      return Icons.shopping_bag_outlined;
-    default:
-      return Icons.insights_outlined;
-  }
-}
-
-Color _kpiAccentForLabel(String label, ColorScheme scheme) {
-  switch (label) {
-    case 'Monthly Pool':
-      return scheme.primary;
-    case 'Total Saved':
-      return scheme.tertiary;
-    case 'Purchase Spend':
-      return scheme.error;
-    default:
-      return scheme.primary;
   }
 }
 
