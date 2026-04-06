@@ -23,10 +23,7 @@ class BudgieApp extends StatelessWidget {
   const BudgieApp({super.key});
 
   ThemeData _buildTheme(ColorScheme scheme) {
-    final base = ThemeData(
-      colorScheme: scheme,
-      useMaterial3: true,
-    );
+    final base = ThemeData(colorScheme: scheme, useMaterial3: true);
 
     final textTheme = base.textTheme
         .copyWith(
@@ -76,10 +73,7 @@ class BudgieApp extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         )
-        .apply(
-          bodyColor: scheme.onSurface,
-          displayColor: scheme.onSurface,
-        );
+        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
 
     return base.copyWith(
       scaffoldBackgroundColor: AppSurfaceTint.background(scheme),
@@ -106,13 +100,17 @@ class BudgieApp extends StatelessWidget {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return textTheme.labelMedium?.copyWith(
-            color: selected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant,
+            color: selected
+                ? scheme.onSecondaryContainer
+                : scheme.onSurfaceVariant,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant,
+            color: selected
+                ? scheme.onSecondaryContainer
+                : scheme.onSurfaceVariant,
           );
         }),
       ),
@@ -120,17 +118,27 @@ class BudgieApp extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: scheme.primary,
           foregroundColor: scheme.onPrimary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           textStyle: textTheme.labelLarge,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
           side: BorderSide(color: scheme.outline),
           foregroundColor: scheme.onSurface,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           textStyle: textTheme.labelLarge,
         ),
       ),
@@ -138,16 +146,29 @@ class BudgieApp extends StatelessWidget {
         backgroundColor: scheme.surfaceContainer,
         selectedColor: scheme.secondaryContainer,
         side: BorderSide(color: scheme.outlineVariant),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
-        labelStyle: TextStyle(color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
-        secondaryLabelStyle: TextStyle(color: scheme.onSecondaryContainer, fontWeight: FontWeight.w700),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        labelStyle: TextStyle(
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+        secondaryLabelStyle: TextStyle(
+          color: scheme.onSecondaryContainer,
+          fontWeight: FontWeight.w700,
+        ),
       ),
       listTileTheme: ListTileThemeData(
         dense: true,
         visualDensity: VisualDensity.compact,
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
         titleTextStyle: textTheme.bodyMedium,
-        subtitleTextStyle: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        subtitleTextStyle: textTheme.bodySmall?.copyWith(
+          color: scheme.onSurfaceVariant,
+        ),
         iconColor: scheme.onSurfaceVariant,
       ),
       dialogTheme: DialogThemeData(
@@ -156,7 +177,9 @@ class BudgieApp extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
         titleTextStyle: textTheme.titleLarge,
-        contentTextStyle: textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+        ),
       ),
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant,
@@ -167,12 +190,17 @@ class BudgieApp extends StatelessWidget {
         behavior: SnackBarBehavior.floating,
         backgroundColor: scheme.inverseSurface,
         contentTextStyle: TextStyle(color: scheme.onInverseSurface),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surfaceContainerHigh,
-        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
           borderSide: BorderSide(color: scheme.outlineVariant),
@@ -185,7 +213,10 @@ class BudgieApp extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.sm),
           borderSide: BorderSide(color: scheme.primary, width: 1.4),
         ),
-        labelStyle: TextStyle(color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+        labelStyle: TextStyle(
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
         hintStyle: TextStyle(color: scheme.onSurfaceVariant),
       ),
     );
@@ -196,12 +227,18 @@ class BudgieApp extends StatelessWidget {
     const fallbackSeed = Color(0xFF00639B);
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) {
-        final lightScheme = lightDynamic ??
-            ColorScheme.fromSeed(seedColor: fallbackSeed, brightness: Brightness.light)
-                .harmonized();
-        final darkScheme = darkDynamic ??
-            ColorScheme.fromSeed(seedColor: fallbackSeed, brightness: Brightness.dark)
-                .harmonized();
+        final lightScheme =
+            lightDynamic ??
+            ColorScheme.fromSeed(
+              seedColor: fallbackSeed,
+              brightness: Brightness.light,
+            ).harmonized();
+        final darkScheme =
+            darkDynamic ??
+            ColorScheme.fromSeed(
+              seedColor: fallbackSeed,
+              brightness: Brightness.dark,
+            ).harmonized();
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,

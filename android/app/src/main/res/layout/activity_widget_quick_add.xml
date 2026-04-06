@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/widget_sheet_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Add Daily Spending"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_sheet_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="Enter exact amount"
+        android:textSize="13sp" />
+
+    <EditText
+        android:id="@+id/widget_sheet_amount_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:hint="0.00"
+        android:inputType="numberDecimal"
+        android:maxLines="1"
+        android:selectAllOnFocus="true" />
+
+    <TextView
+        android:id="@+id/widget_sheet_error_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="#B3261E"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/widget_sheet_cancel_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/widget_sheet_submit_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:text="Add"
+            android:textAllCaps="false" />
+    </LinearLayout>
+
+</LinearLayout>

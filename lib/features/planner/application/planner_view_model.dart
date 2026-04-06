@@ -65,6 +65,8 @@ class PlannerViewModel extends Cubit<PlannerState> {
   int _lastAiRequestAt = 0;
   int _geminiBlockedUntil = 0;
   bool _aiRequestLock = false;
+  bool _widgetSyncInProgress = false;
+  bool _cloudHydrateInProgress = false;
 
   final List<PlannerSnapshot> _undoStack = [];
 
@@ -126,6 +128,17 @@ class PlannerViewModel extends Cubit<PlannerState> {
       }
     }
 
+    var importedCount = 0;
+    try {
+      _widgetSyncInProgress = true;
+      importedCount = await _consumeWidgetSpendEvents(prefs);
+    } finally {
+      _widgetSyncInProgress = false;
+    }
+    if (importedCount > 0) {
+      await prefs.setString(storageKey, jsonEncode(_buildPayload()));
+    }
+
     salaryCtrl.text = salary <= 0 ? '' : salary.toStringAsFixed(0);
     isHydrated = true;
     _emitState();
@@ -147,6 +160,25 @@ class PlannerViewModel extends Cubit<PlannerState> {
     });
 
     await _hydrateFromCloud();
+  }
+
+  Future<int> syncPendingWidgetSpends() async {
+    if (!isHydrated || _widgetSyncInProgress) {
+      return 0;
+    }
+
+    _widgetSyncInProgress = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final importedCount = await _consumeWidgetSpendEvents(prefs);
+      if (importedCount > 0) {
+        _save();
+        _emitState();
+      }
+      return importedCount;
+    } finally {
+      _widgetSyncInProgress = false;
+    }
   }
 
   Future<void> signInWithGoogle() async {
@@ -193,6 +225,10 @@ class PlannerViewModel extends Cubit<PlannerState> {
   }
 
   Future<void> _hydrateFromCloud() async {
+    if (_cloudHydrateInProgress) {
+      return;
+    }
+
     if (!firebaseReady || authUser == null) {
       cloudLoadDone = true;
       cloudStatus = 'local';
@@ -200,9 +236,12 @@ class PlannerViewModel extends Cubit<PlannerState> {
       return;
     }
 
+    _cloudHydrateInProgress = true;
     cloudLoadDone = false;
     cloudStatus = 'syncing';
     _emitState();
+
+    var importedFromWidgetAfterCloud = 0;
 
     try {
       final snap = await FirebaseFirestore.instance
@@ -215,13 +254,32 @@ class PlannerViewModel extends Cubit<PlannerState> {
       } else if (plannerState is Map) {
         _applyPayload(Map<String, dynamic>.from(plannerState));
       }
+
+      // Re-apply any pending widget events after cloud payload to avoid
+      // cloud hydration overwriting widget-originated local events.
+      final prefs = await SharedPreferences.getInstance();
+      try {
+        _widgetSyncInProgress = true;
+        importedFromWidgetAfterCloud = await _consumeWidgetSpendEvents(prefs);
+      } finally {
+        _widgetSyncInProgress = false;
+      }
+      if (importedFromWidgetAfterCloud > 0) {
+        await prefs.setString(storageKey, jsonEncode(_buildPayload()));
+      }
+
       cloudStatus = 'synced';
     } catch (_) {
       cloudStatus = 'error';
       authError = 'Cloud load failed. Using local data.';
     } finally {
+      _cloudHydrateInProgress = false;
       cloudLoadDone = true;
       _emitState();
+    }
+
+    if (importedFromWidgetAfterCloud > 0 && cloudStatus == 'synced') {
+      await _save();
     }
   }
 
@@ -540,50 +598,17 @@ class PlannerViewModel extends Cubit<PlannerState> {
       return 'Enter a valid spending amount.';
     }
 
-    final availableSavingsNow = round2(extraSavings + availableMonthExcess);
-    if (amountValue > availableSavingsNow + 0.01) {
+    _pushUndo();
+    final note = dailySpendNoteCtrl.text.trim();
+    final applied = _applyDailySpend(
+      amount: amountValue,
+      spendDate: dailySpendDate,
+      note: note,
+      source: 'DAILY_SPEND',
+    );
+    if (!applied) {
       return 'Not enough savings available for this daily spend entry.';
     }
-
-    _pushUndo();
-
-    var remaining = round2(amountValue);
-    final fromCurrentExcess = remaining < availableMonthExcess
-        ? remaining
-        : availableMonthExcess;
-
-    if (fromCurrentExcess > 0) {
-      monthPoolSpent = round2(monthPoolSpent + fromCurrentExcess);
-      remaining = round2(remaining - fromCurrentExcess);
-    }
-
-    if (remaining > 0) {
-      extraSavings = round2(
-        (extraSavings - remaining).clamp(0, double.infinity),
-      );
-    }
-
-    final note = dailySpendNoteCtrl.text.trim();
-    dailySpends = [
-      DailySpendEntry(
-        id: _uuid.v4(),
-        date: dateOnly(dailySpendDate),
-        amount: round2(amountValue),
-        note: note,
-      ),
-      ...dailySpends,
-    ];
-
-    _addLog(
-      EventType.expense,
-      'Daily spend logged: ${note.isEmpty ? 'General' : note}',
-      amount: amountValue,
-      meta: {
-        'source': 'DAILY_SPEND',
-        'spendDate': DateFormat('yyyy-MM-dd').format(dailySpendDate),
-        'note': note.isEmpty ? null : note,
-      },
-    );
 
     dailySpendAmountCtrl.clear();
     dailySpendNoteCtrl.clear();
@@ -1151,6 +1176,180 @@ class PlannerViewModel extends Cubit<PlannerState> {
           (entry) => DailySpendEntry.fromJson(Map<String, dynamic>.from(entry)),
         )
         .toList(growable: false);
+  }
+
+  Future<int> _consumeWidgetSpendEvents(SharedPreferences prefs) async {
+    final rawQueue = prefs.getString(widgetDailySpendEventsKey);
+    if (rawQueue == null || rawQueue.trim().isEmpty) {
+      return 0;
+    }
+
+    List<dynamic> queue;
+    try {
+      final decoded = jsonDecode(rawQueue);
+      if (decoded is! List) {
+        await prefs.remove(widgetDailySpendEventsKey);
+        return 0;
+      }
+      queue = decoded;
+    } catch (_) {
+      await prefs.remove(widgetDailySpendEventsKey);
+      return 0;
+    }
+
+    var imported = 0;
+    var skipped = 0;
+    var pendingRetry = 0;
+    final processedIds =
+        prefs.getStringList(widgetDailySpendProcessedIdsKey)?.toSet() ??
+        <String>{};
+    final nextQueue = <Map<String, dynamic>>[];
+
+    queue.sort((a, b) {
+      if (a is! Map || b is! Map) {
+        return 0;
+      }
+      final aTs = toIntValue(a['createdAtMs']) == 0
+          ? toIntValue(a['ts'])
+          : toIntValue(a['createdAtMs']);
+      final bTs = toIntValue(b['createdAtMs']) == 0
+          ? toIntValue(b['ts'])
+          : toIntValue(b['createdAtMs']);
+      return aTs.compareTo(bTs);
+    });
+
+    for (var i = 0; i < queue.length; i += 1) {
+      final event = queue[i];
+      if (event is! Map) {
+        continue;
+      }
+
+      final map = Map<String, dynamic>.from(event);
+      final eventId = (map['eventId'] ?? '').toString().trim().isEmpty
+          ? '${toIntValue(map['createdAtMs']) == 0 ? toIntValue(map['ts']) : toIntValue(map['createdAtMs'])}-${toIntValue(map['amountMinor']) == 0 ? toDoubleValue(map['amount']) : toIntValue(map['amountMinor'])}-${(map['dateIso'] ?? map['date'] ?? '').toString()}-$i'
+          : map['eventId'].toString();
+
+      if (processedIds.contains(eventId)) {
+        continue;
+      }
+
+      if ((map['type'] ?? '').toString() != 'add') {
+        processedIds.add(eventId);
+        continue;
+      }
+
+      final amountMinor = toIntValue(map['amountMinor']);
+      final amount = amountMinor > 0
+          ? round2(amountMinor / 100)
+          : toDoubleValue(map['amount']);
+      if (amount <= 0) {
+        processedIds.add(eventId);
+        continue;
+      }
+
+      final dateRaw = (map['dateIso'] ?? map['date'] ?? '').toString();
+      final parsedDate = DateTime.tryParse(dateRaw);
+      final spendDate = parsedDate ?? DateTime.now();
+
+      final applied = _applyDailySpend(
+        amount: amount,
+        spendDate: spendDate,
+        note: 'Widget quick add',
+        source: 'WIDGET_SYNC',
+      );
+      if (applied) {
+        imported += 1;
+        processedIds.add(eventId);
+      } else {
+        skipped += 1;
+        final retries = toIntValue(map['retries']) + 1;
+        if (retries <= widgetDailySpendMaxRetries) {
+          map['eventId'] = eventId;
+          map['retries'] = retries;
+          nextQueue.add(map);
+          pendingRetry += 1;
+        } else {
+          processedIds.add(eventId);
+        }
+      }
+    }
+
+    if (skipped > 0) {
+      _addLog(
+        EventType.system,
+        'Widget sync skipped $skipped entr${skipped == 1 ? 'y' : 'ies'} due to insufficient available savings.',
+        meta: {'source': 'WIDGET_SYNC', 'pendingRetry': pendingRetry},
+      );
+    }
+
+    if (nextQueue.isEmpty) {
+      await prefs.remove(widgetDailySpendEventsKey);
+    } else {
+      await prefs.setString(widgetDailySpendEventsKey, jsonEncode(nextQueue));
+    }
+
+    final processedList = processedIds.toList(growable: false);
+    final trimmed = processedList.length <= widgetDailySpendMaxProcessedIds
+        ? processedList
+        : processedList.sublist(
+            processedList.length - widgetDailySpendMaxProcessedIds,
+          );
+    await prefs.setStringList(widgetDailySpendProcessedIdsKey, trimmed);
+
+    return imported;
+  }
+
+  bool _applyDailySpend({
+    required double amount,
+    required DateTime spendDate,
+    required String note,
+    required String source,
+  }) {
+    final availableSavingsNow = round2(extraSavings + availableMonthExcess);
+    if (amount > availableSavingsNow + 0.01) {
+      return false;
+    }
+
+    var remaining = round2(amount);
+    final fromCurrentExcess = remaining < availableMonthExcess
+        ? remaining
+        : availableMonthExcess;
+
+    if (fromCurrentExcess > 0) {
+      monthPoolSpent = round2(monthPoolSpent + fromCurrentExcess);
+      remaining = round2(remaining - fromCurrentExcess);
+    }
+
+    if (remaining > 0) {
+      extraSavings = round2(
+        (extraSavings - remaining).clamp(0, double.infinity),
+      );
+    }
+
+    final trimmedNote = note.trim();
+    final normalizedDate = dateOnly(spendDate);
+    dailySpends = [
+      DailySpendEntry(
+        id: _uuid.v4(),
+        date: normalizedDate,
+        amount: round2(amount),
+        note: trimmedNote,
+      ),
+      ...dailySpends,
+    ];
+
+    _addLog(
+      EventType.expense,
+      'Daily spend logged: ${trimmedNote.isEmpty ? 'General' : trimmedNote}',
+      amount: amount,
+      meta: {
+        'source': source,
+        'spendDate': DateFormat('yyyy-MM-dd').format(normalizedDate),
+        'note': trimmedNote.isEmpty ? null : trimmedNote,
+      },
+    );
+
+    return true;
   }
 
   @override

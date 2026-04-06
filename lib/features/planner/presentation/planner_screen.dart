@@ -12,15 +12,92 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
-class PlannerScreen extends StatelessWidget {
+class PlannerScreen extends StatefulWidget {
   const PlannerScreen({super.key});
 
-  Future<void> _showQuickDailyExpenseDialog(
-    BuildContext context,
-    PlannerViewModel vm,
-  ) async {
-    final amountCtrl = TextEditingController();
-    final noteCtrl = TextEditingController();
+  @override
+  State<PlannerScreen> createState() => _PlannerScreenState();
+}
+
+class _PlannerScreenState extends State<PlannerScreen>
+    with WidgetsBindingObserver {
+  bool _didInitialWidgetSync = false;
+  bool _isQuickAddDialogOpen = false;
+  final TextEditingController _quickAddAmountCtrl = TextEditingController();
+  final TextEditingController _quickAddNoteCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleSyncOnAppOpen();
+  }
+
+  @override
+  void dispose() {
+    _quickAddAmountCtrl.dispose();
+    _quickAddNoteCtrl.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted ||
+        state != AppLifecycleState.resumed ||
+        _isQuickAddDialogOpen) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isQuickAddDialogOpen) {
+        return;
+      }
+      context.read<PlannerViewModel>().syncPendingWidgetSpends();
+    });
+  }
+
+  void _scheduleSyncOnAppOpen() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _didInitialWidgetSync) {
+        return;
+      }
+
+      final vm = context.read<PlannerViewModel>();
+      if (vm.isHydrated) {
+        _didInitialWidgetSync = true;
+        vm.syncPendingWidgetSpends();
+        return;
+      }
+
+      Future<void>.delayed(const Duration(milliseconds: 120), () {
+        if (mounted && !_didInitialWidgetSync) {
+          _scheduleSyncOnAppOpen();
+        }
+      });
+    });
+  }
+
+  Future<void> _openQuickDailyExpenseDialog(PlannerViewModel vm) async {
+    if (_isQuickAddDialogOpen) {
+      return;
+    }
+
+    _isQuickAddDialogOpen = true;
+    try {
+      await _showQuickDailyExpenseDialog(vm);
+    } finally {
+      _isQuickAddDialogOpen = false;
+    }
+  }
+
+  Future<void> _showQuickDailyExpenseDialog(PlannerViewModel vm) async {
+    if (!mounted) {
+      return;
+    }
+
+    _quickAddAmountCtrl.clear();
+    _quickAddNoteCtrl.clear();
     DateTime selectedDate = vm.dailySpendDate;
 
     await showDialog<void>(
@@ -57,7 +134,8 @@ class PlannerScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   TextField(
-                    controller: amountCtrl,
+                    controller: _quickAddAmountCtrl,
+                    autofocus: true,
                     keyboardType: TextInputType.number,
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
@@ -69,7 +147,7 @@ class PlannerScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   TextField(
-                    controller: noteCtrl,
+                    controller: _quickAddNoteCtrl,
                     maxLines: 1,
                     decoration: const InputDecoration(
                       labelText: 'Note (optional)',
@@ -80,15 +158,15 @@ class PlannerScreen extends StatelessWidget {
               ),
               actions: [
                 TextButton.icon(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  onPressed: () => Navigator.of(dialogContext).maybePop(),
                   icon: const Icon(Icons.close),
                   label: const Text('Cancel'),
                 ),
                 FilledButton.icon(
                   onPressed: () {
-                    final amountInput = amountCtrl.text.trim();
+                    final amountInput = _quickAddAmountCtrl.text.trim();
                     if (amountInput.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                         const SnackBar(
                           content: Text('Please enter an amount.'),
                         ),
@@ -98,20 +176,20 @@ class PlannerScreen extends StatelessWidget {
 
                     vm.setDailySpendDate(selectedDate);
                     vm.dailySpendAmountCtrl.text = amountInput;
-                    vm.dailySpendNoteCtrl.text = noteCtrl.text.trim();
+                    vm.dailySpendNoteCtrl.text = _quickAddNoteCtrl.text.trim();
                     final error = vm.addDailySpending();
 
-                    Navigator.of(dialogContext).pop();
-                    if (!context.mounted) {
+                    Navigator.of(dialogContext).maybePop();
+                    if (!mounted) {
                       return;
                     }
 
                     if (error != null) {
-                      ScaffoldMessenger.of(
+                      ScaffoldMessenger.maybeOf(
                         context,
-                      ).showSnackBar(SnackBar(content: Text(error)));
+                      )?.showSnackBar(SnackBar(content: Text(error)));
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
                         const SnackBar(content: Text('Daily expense added.')),
                       );
                     }
@@ -125,9 +203,6 @@ class PlannerScreen extends StatelessWidget {
         );
       },
     );
-
-    amountCtrl.dispose();
-    noteCtrl.dispose();
   }
 
   @override
@@ -140,6 +215,25 @@ class PlannerScreen extends StatelessWidget {
           appBar: AppBar(
             title: Text('Budgie', style: textTheme.titleLarge),
             actions: [
+              IconButton(
+                onPressed: () async {
+                  final imported = await vm.syncPendingWidgetSpends();
+                  if (!context.mounted) {
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        imported > 0
+                            ? 'Synced $imported widget entr${imported == 1 ? 'y' : 'ies'}.'
+                            : 'No pending widget entries to sync.',
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.sync),
+                tooltip: 'Sync widget data',
+              ),
               IconButton(
                 onPressed: vm.undoDepth > 0 ? vm.undoLastAction : null,
                 icon: const Icon(Icons.undo),
@@ -171,17 +265,6 @@ class PlannerScreen extends StatelessWidget {
                   icon: Icon(vm.authUser == null ? Icons.login : Icons.logout),
                   label: Text(vm.authUser == null ? 'Login' : 'Logout'),
                 ),
-              Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.sm),
-                child: Center(
-                  child: Text(
-                    vm.cloudStatus.toUpperCase(),
-                    style: textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
           extendBody: true,
@@ -262,8 +345,7 @@ class PlannerScreen extends StatelessWidget {
                       Positioned(
                         top: -18,
                         child: FloatingActionButton(
-                          onPressed: () =>
-                              _showQuickDailyExpenseDialog(context, vm),
+                          onPressed: () => _openQuickDailyExpenseDialog(vm),
                           child: const Icon(Icons.add),
                         ),
                       ),
@@ -319,6 +401,76 @@ class _PlannerTab extends StatefulWidget {
 
 class _PlannerTabState extends State<_PlannerTab> {
   int _section = 0;
+
+  Future<void> _showSalaryDialog(
+    PlannerViewModel vm, {
+    required String title,
+    required String initialValue,
+  }) async {
+    final ctrl = TextEditingController(text: initialValue);
+    final isHandlingAction = ValueNotifier<bool>(false);
+
+    void closeDialogSafely(BuildContext dialogContext) {
+      if (!dialogContext.mounted) {
+        return;
+      }
+      final navigator = Navigator.maybeOf(dialogContext);
+      if (navigator != null && navigator.canPop()) {
+        navigator.pop();
+      }
+    }
+
+    void commitSalary(BuildContext dialogContext) {
+      if (isHandlingAction.value) {
+        return;
+      }
+      isHandlingAction.value = true;
+      vm.salaryCtrl.text = ctrl.text.trim();
+      vm.updateSalaryFromInput();
+      closeDialogSafely(dialogContext);
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*$')),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'Monthly salary',
+              hintText: 'Enter amount',
+            ),
+            onSubmitted: (_) => commitSalary(dialogContext),
+          ),
+          actions: [
+            ValueListenableBuilder<bool>(
+              valueListenable: isHandlingAction,
+              builder: (context, busy, _) => TextButton(
+                onPressed: busy ? null : () => closeDialogSafely(dialogContext),
+                child: const Text('Cancel'),
+              ),
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: isHandlingAction,
+              builder: (context, busy, _) => FilledButton(
+                onPressed: busy ? null : () => commitSalary(dialogContext),
+                child: const Text('Save'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    isHandlingAction.dispose();
+    ctrl.dispose();
+  }
 
   _HeaderChipTone _cloudTone(String cloudStatus) {
     switch (cloudStatus.toLowerCase()) {
@@ -431,7 +583,19 @@ class _PlannerTabState extends State<_PlannerTab> {
   Widget _buildSection(PlannerViewModel vm, int section) {
     switch (section) {
       case 0:
-        return _PlannerOverview(vm: vm);
+        return _PlannerOverview(
+          vm: vm,
+          onAddSalary: () => _showSalaryDialog(
+            vm,
+            title: 'Add salary',
+            initialValue: '',
+          ),
+          onEditSalary: () => _showSalaryDialog(
+            vm,
+            title: 'Edit salary',
+            initialValue: vm.salary > 0 ? vm.salary.toStringAsFixed(0) : '',
+          ),
+        );
       case 1:
         return _PlannerExpenses(vm: vm);
       case 2:
@@ -448,13 +612,20 @@ class _PlannerTabState extends State<_PlannerTab> {
 }
 
 class _PlannerOverview extends StatelessWidget {
-  const _PlannerOverview({required this.vm});
+  const _PlannerOverview({
+    required this.vm,
+    this.onAddSalary,
+    this.onEditSalary,
+  });
 
   final PlannerViewModel vm;
+  final VoidCallback? onAddSalary;
+  final VoidCallback? onEditSalary;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     final width = MediaQuery.sizeOf(context).width;
     final cardWidth = width > 900
         ? (width - 32 - 16) / 3
@@ -525,6 +696,43 @@ class _PlannerOverview extends StatelessWidget {
                     title: 'Overview',
                     subtitle: 'Health, burn, and runway at a glance.',
                     icon: Icons.space_dashboard_outlined,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Monthly Salary',
+                              style: text.labelSmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              vm.salary > 0
+                                  ? vm.asCurrency(vm.salary)
+                                  : 'Not set',
+                              style: text.titleSmall?.copyWith(
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: onAddSalary,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add'),
+                      ),
+                      TextButton.icon(
+                        onPressed: onEditSalary,
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text('Edit'),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Wrap(

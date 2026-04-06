@@ -25,6 +25,23 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity
+            android:name=".WidgetQuickAddActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/WidgetInputHostTheme" />
+        <receiver
+            android:name=".DailySpendWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.budgie_flutter.widget.REFRESH" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/daily_spend_widget_info" />
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

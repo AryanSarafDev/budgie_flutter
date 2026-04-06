@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Budgie Daily Spend"
+        android:textColor="#1D1B20"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_total_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Today"
+        android:textColor="#49454F"
+        android:textSize="11sp" />
+
+    <TextView
+        android:id="@+id/widget_total_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="₹0.00"
+        android:textColor="#1D1B20"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/widget_last_entry_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="No entries yet"
+        android:textColor="#49454F"
+        android:textSize="11sp" />
+
+    <TextView
+        android:id="@+id/widget_pending_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="Pending sync: 0"
+        android:textColor="#49454F"
+        android:textSize="11sp" />
+
+    <Button
+        android:id="@+id/widget_add_spending_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Add Spending"
+        android:textAllCaps="false" />
+
+</LinearLayout>
