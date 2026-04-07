@@ -6,6 +6,8 @@ import 'package:budgie_flutter/core/theme/app_tokens.dart';
 import 'package:budgie_flutter/core/utils/helpers.dart';
 import 'package:budgie_flutter/features/planner/application/planner_state.dart';
 import 'package:budgie_flutter/features/planner/application/planner_view_model.dart';
+import 'package:budgie_flutter/features/planner/data/sms_import_service.dart';
+import 'package:budgie_flutter/features/planner/data/statement_import_service.dart';
 import 'package:budgie_flutter/features/planner/domain/planner_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -401,6 +403,613 @@ class _PlannerTab extends StatefulWidget {
 
 class _PlannerTabState extends State<_PlannerTab> {
   int _section = 0;
+  DateTime _smsImportFromDate = dateOnly(DateTime.now());
+  DateTime _statementImportFromDate = dateOnly(DateTime.now());
+
+  String _smsModeLabel(SmsImportMode mode) {
+    switch (mode) {
+      case SmsImportMode.today:
+        return 'Today only';
+      case SmsImportMode.fromDate:
+        return 'From specific date';
+      case SmsImportMode.newOnly:
+        return 'Only new transactions';
+    }
+  }
+
+  Future<void> _openSmsImportDialog(PlannerViewModel vm) async {
+    if (Theme.of(context).platform != TargetPlatform.android) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('SMS import is currently available only on Android.'),
+        ),
+      );
+      return;
+    }
+
+    var hasPermission = await SmsImportService.hasPermission();
+    if (!hasPermission) {
+      hasPermission = await SmsImportService.requestPermission();
+    }
+    if (!mounted) {
+      return;
+    }
+
+    if (!hasPermission) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('SMS permission is required to import UPI transactions.'),
+        ),
+      );
+      return;
+    }
+
+    var mode = SmsImportMode.today;
+    var includeDebits = true;
+    var includeCredits = true;
+    var loading = false;
+    var error = '';
+    var initialized = false;
+    var candidates = <SmsImportTransaction>[];
+    final selectedKeys = <String>{};
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            Future<void> fetchCandidates() async {
+              setDialogState(() {
+                loading = true;
+                error = '';
+              });
+
+              DateTime? startAt;
+              if (mode == SmsImportMode.today) {
+                startAt = dateOnly(DateTime.now());
+              } else if (mode == SmsImportMode.fromDate) {
+                startAt = dateOnly(_smsImportFromDate);
+              }
+
+              try {
+                final results = await SmsImportService.fetchTransactions(
+                  startAt: startAt,
+                  includeDebits: includeDebits,
+                  includeCredits: includeCredits,
+                  excludeKeys: mode == SmsImportMode.newOnly
+                      ? vm.importedSmsKeysView
+                      : const <String>{},
+                );
+
+                if (!mounted) {
+                  return;
+                }
+
+                setDialogState(() {
+                  candidates = results;
+                  selectedKeys
+                    ..clear()
+                    ..addAll(results.map((entry) => entry.sourceKey));
+                  loading = false;
+                });
+              } catch (e) {
+                if (!mounted) {
+                  return;
+                }
+                setDialogState(() {
+                  loading = false;
+                  error = 'Unable to read SMS: $e';
+                });
+              }
+            }
+
+            if (!initialized) {
+              initialized = true;
+              Future<void>.microtask(fetchCandidates);
+            }
+
+            final canImport = !loading && selectedKeys.isNotEmpty;
+
+            return AlertDialog(
+              title: const Text('Import UPI SMS'),
+              content: SizedBox(
+                width: 520,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<SmsImportMode>(
+                      initialValue: mode,
+                      decoration: const InputDecoration(labelText: 'Import mode'),
+                      items: SmsImportMode.values
+                          .map(
+                            (entry) => DropdownMenuItem<SmsImportMode>(
+                              value: entry,
+                              child: Text(_smsModeLabel(entry)),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+                        setDialogState(() => mode = value);
+                        fetchCandidates();
+                      },
+                    ),
+                    if (mode == SmsImportMode.fromDate) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      FilledButton.tonalIcon(
+                        onPressed: () async {
+                          final chosen = await showDatePicker(
+                            context: dialogContext,
+                            initialDate: _smsImportFromDate,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (chosen != null) {
+                            setDialogState(() {
+                              _smsImportFromDate = chosen;
+                            });
+                            fetchCandidates();
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_today_outlined),
+                        label: Text(
+                          DateFormat('dd MMM yyyy').format(_smsImportFromDate),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        FilterChip(
+                          label: const Text('Debits'),
+                          selected: includeDebits,
+                          onSelected: (selected) {
+                            if (!selected && !includeCredits) {
+                              return;
+                            }
+                            setDialogState(() => includeDebits = selected);
+                            fetchCandidates();
+                          },
+                        ),
+                        FilterChip(
+                          label: const Text('Credits'),
+                          selected: includeCredits,
+                          onSelected: (selected) {
+                            if (!selected && !includeDebits) {
+                              return;
+                            }
+                            setDialogState(() => includeCredits = selected);
+                            fetchCandidates();
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    if (loading)
+                      const Center(child: CircularProgressIndicator())
+                    else if (error.isNotEmpty)
+                      Text(
+                        error,
+                        style: Theme.of(
+                          dialogContext,
+                        ).textTheme.bodySmall?.copyWith(color: Theme.of(dialogContext).colorScheme.error),
+                      )
+                    else if (candidates.isEmpty)
+                      const Text('No matching UPI SMS found for this filter.')
+                    else
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 320),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: candidates.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final tx = candidates[index];
+                            final selected = selectedKeys.contains(tx.sourceKey);
+                            final isCredit = tx.direction == SmsImportDirection.credit;
+                            final amountPrefix = isCredit ? '+' : '-';
+                            final directionLabel = isCredit ? 'Credit' : 'Debit';
+
+                            return CheckboxListTile(
+                              value: selected,
+                              onChanged: (checked) {
+                                setDialogState(() {
+                                  if (checked ?? false) {
+                                    selectedKeys.add(tx.sourceKey);
+                                  } else {
+                                    selectedKeys.remove(tx.sourceKey);
+                                  }
+                                });
+                              },
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.xs,
+                              ),
+                              title: Text(
+                                '$amountPrefix${vm.asCurrency(tx.amount)} • $directionLabel',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              subtitle: Text(
+                                '${DateFormat('dd MMM, hh:mm a').format(tx.timestamp)} • ${tx.sender.isEmpty ? 'Unknown sender' : tx.sender}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                TextButton.icon(
+                  onPressed: loading ? null : fetchCandidates,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Refresh'),
+                ),
+                FilledButton.icon(
+                  onPressed: canImport
+                      ? () {
+                          final selectedTransactions = candidates
+                              .where(
+                                (entry) => selectedKeys.contains(entry.sourceKey),
+                              )
+                              .toList(growable: false);
+
+                          final result = vm.importSmsTransactions(
+                            selectedTransactions,
+                          );
+                          Navigator.of(dialogContext).pop();
+                          if (!mounted) {
+                            return;
+                          }
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Imported ${result.importedTotal} (${result.importedDebits} debits, ${result.importedCredits} credits). '
+                                'Skipped ${result.skippedDuplicate} duplicates and ${result.skippedInvalid} invalid.',
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
+                  icon: const Icon(Icons.file_download_done_outlined),
+                  label: const Text('Import Selected'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openStatementImportDialog(PlannerViewModel vm) async {
+    var mode = SmsImportMode.today;
+    var includeDebits = true;
+    var includeCredits = true;
+    var loading = false;
+    var error = '';
+    var fileName = '';
+    var candidates = <StatementImportTransaction>[];
+    var debitColumnName = '';
+    var creditColumnName = '';
+    final selectedKeys = <String>{};
+
+    Future<void> loadFile(StateSetter setDialogState) async {
+      setDialogState(() {
+        loading = true;
+        error = '';
+      });
+
+      try {
+        final normalizedDebit = debitColumnName.trim();
+        final normalizedCredit = creditColumnName.trim();
+        final result = await StatementImportService.pickAndParseStatement(
+          debitColumnName: normalizedDebit.isEmpty ? null : normalizedDebit,
+          creditColumnName: normalizedCredit.isEmpty ? null : normalizedCredit,
+        );
+        if (!mounted) {
+          return;
+        }
+
+        if (result == null) {
+          setDialogState(() {
+            loading = false;
+            error = 'No file selected.';
+          });
+          return;
+        }
+
+        setDialogState(() {
+          fileName = result.fileName;
+          candidates = result.transactions;
+          selectedKeys
+            ..clear()
+            ..addAll(result.transactions.map((entry) => entry.sourceKey));
+          loading = false;
+        });
+      } catch (e) {
+        if (!mounted) {
+          return;
+        }
+        setDialogState(() {
+          loading = false;
+          error = 'Could not parse statement file: $e';
+        });
+      }
+    }
+
+    List<StatementImportTransaction> filtered() {
+      final today = dateOnly(DateTime.now());
+      final startFrom = dateOnly(_statementImportFromDate);
+
+      return candidates.where((entry) {
+        if (mode == SmsImportMode.today && dateOnly(entry.timestamp) != today) {
+          return false;
+        }
+        if (mode == SmsImportMode.fromDate && dateOnly(entry.timestamp).isBefore(startFrom)) {
+          return false;
+        }
+        if (mode == SmsImportMode.newOnly && vm.importedStatementKeysView.contains(entry.sourceKey)) {
+          return false;
+        }
+        if (!includeDebits && entry.direction == SmsImportDirection.debit) {
+          return false;
+        }
+        if (!includeCredits && entry.direction == SmsImportDirection.credit) {
+          return false;
+        }
+        return true;
+      }).toList(growable: false);
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            final visible = filtered();
+            final canImport = !loading && visible.any((entry) => selectedKeys.contains(entry.sourceKey));
+
+            return AlertDialog(
+              title: const Text('Import Statement (CSV/XLSX)'),
+              content: SizedBox(
+                width: 620,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: loading ? null : () => loadFile(setDialogState),
+                          icon: const Icon(Icons.upload_file_outlined),
+                          label: const Text('Choose file'),
+                        ),
+                        if (fileName.isNotEmpty)
+                          Chip(label: Text(fileName, overflow: TextOverflow.ellipsis)),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            initialValue: debitColumnName,
+                            onChanged: (value) {
+                              setDialogState(() => debitColumnName = value);
+                            },
+                            decoration: const InputDecoration(
+                              labelText: 'Debit column name (optional)',
+                              hintText: 'e.g. Withdrawal',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: TextFormField(
+                            initialValue: creditColumnName,
+                            onChanged: (value) {
+                              setDialogState(() => creditColumnName = value);
+                            },
+                            decoration: const InputDecoration(
+                              labelText: 'Credit column name (optional)',
+                              hintText: 'e.g. Deposit',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Set custom debit/credit headers before choosing a file for non-standard bank statements.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    DropdownButtonFormField<SmsImportMode>(
+                      initialValue: mode,
+                      decoration: const InputDecoration(labelText: 'Import mode'),
+                      items: SmsImportMode.values
+                          .map(
+                            (entry) => DropdownMenuItem<SmsImportMode>(
+                              value: entry,
+                              child: Text(_smsModeLabel(entry)),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: (value) {
+                        if (value == null) {
+                          return;
+                        }
+                        setDialogState(() => mode = value);
+                      },
+                    ),
+                    if (mode == SmsImportMode.fromDate) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      FilledButton.tonalIcon(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: dialogContext,
+                            initialDate: _statementImportFromDate,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            setDialogState(() => _statementImportFromDate = picked);
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_today_outlined),
+                        label: Text(DateFormat('dd MMM yyyy').format(_statementImportFromDate)),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        FilterChip(
+                          label: const Text('Debits'),
+                          selected: includeDebits,
+                          onSelected: (selected) {
+                            if (!selected && !includeCredits) {
+                              return;
+                            }
+                            setDialogState(() => includeDebits = selected);
+                          },
+                        ),
+                        FilterChip(
+                          label: const Text('Credits'),
+                          selected: includeCredits,
+                          onSelected: (selected) {
+                            if (!selected && !includeDebits) {
+                              return;
+                            }
+                            setDialogState(() => includeCredits = selected);
+                          },
+                        ),
+                        TextButton(
+                          onPressed: visible.isEmpty
+                              ? null
+                              : () {
+                                  setDialogState(() {
+                                    final selectedVisible = visible.where(
+                                      (entry) => selectedKeys.contains(entry.sourceKey),
+                                    );
+                                    final allSelected = selectedVisible.length == visible.length;
+                                    if (allSelected) {
+                                      selectedKeys.removeAll(visible.map((entry) => entry.sourceKey));
+                                    } else {
+                                      selectedKeys.addAll(visible.map((entry) => entry.sourceKey));
+                                    }
+                                  });
+                                },
+                          child: const Text('Toggle all'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    if (loading)
+                      const Center(child: CircularProgressIndicator())
+                    else if (error.isNotEmpty)
+                      Text(
+                        error,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      )
+                    else if (visible.isEmpty)
+                      const Text('No matching rows found. Choose a file or adjust filters.')
+                    else
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 320),
+                        child: ListView.separated(
+                          itemCount: visible.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final tx = visible[index];
+                            final selected = selectedKeys.contains(tx.sourceKey);
+                            return CheckboxListTile(
+                              value: selected,
+                              dense: true,
+                              onChanged: (checked) {
+                                setDialogState(() {
+                                  if (checked ?? false) {
+                                    selectedKeys.add(tx.sourceKey);
+                                  } else {
+                                    selectedKeys.remove(tx.sourceKey);
+                                  }
+                                });
+                              },
+                              title: Text(
+                                '${tx.direction == SmsImportDirection.credit ? '+' : '-'}${vm.asCurrency(tx.amount)} • ${tx.direction.name.toUpperCase()}',
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              subtitle: Text(
+                                '${DateFormat('dd MMM yyyy').format(tx.timestamp)} • ${tx.description}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  onPressed: canImport
+                      ? () {
+                          final picked = visible
+                              .where((entry) => selectedKeys.contains(entry.sourceKey))
+                              .toList(growable: false);
+                          final result = vm.importStatementTransactions(picked);
+                          Navigator.of(dialogContext).pop();
+                          if (!mounted) {
+                            return;
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Imported ${result.importedTotal} (${result.importedDebits} debits, ${result.importedCredits} credits). '
+                                'Skipped ${result.skippedDuplicate} duplicates and ${result.skippedInvalid} invalid.',
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
+                  icon: const Icon(Icons.file_download_done_outlined),
+                  label: const Text('Import Selected'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<void> _showSalaryDialog(
     PlannerViewModel vm, {
@@ -599,7 +1208,11 @@ class _PlannerTabState extends State<_PlannerTab> {
       case 1:
         return _PlannerExpenses(vm: vm);
       case 2:
-        return _PlannerDaily(vm: vm);
+        return _PlannerDaily(
+          vm: vm,
+          onImportSms: () => _openSmsImportDialog(vm),
+          onImportStatement: () => _openStatementImportDialog(vm),
+        );
       case 3:
         return _PlannerGoals(vm: vm);
       case 4:
@@ -1186,9 +1799,200 @@ class _PlannerGoals extends StatelessWidget {
 }
 
 class _PlannerDaily extends StatelessWidget {
-  const _PlannerDaily({required this.vm});
+  const _PlannerDaily({required this.vm, this.onImportSms, this.onImportStatement});
 
   final PlannerViewModel vm;
+  final Future<void> Function()? onImportSms;
+  final Future<void> Function()? onImportStatement;
+
+  static const List<String> _weekLabels = [
+    'Sun',
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+  ];
+
+  double _amountFontSize(String amountLabel) {
+    final length = amountLabel.length;
+    if (length >= 16) {
+      return 8;
+    }
+    if (length >= 13) {
+      return 9;
+    }
+    if (length >= 10) {
+      return 10;
+    }
+    return 11;
+  }
+
+  String _signedCurrency(double value) {
+    if (value == 0) {
+      return vm.asCurrency(0);
+    }
+    return '${value > 0 ? '+' : '-'}${vm.asCurrency(value.abs())}';
+  }
+
+  Future<void> _showDaySpendingsPopup(
+    BuildContext context, {
+    required DateTime date,
+  }) async {
+    final selectedDay = dateOnly(date);
+    final items = <_DaySpendingItem>[];
+
+    for (final spend in vm.dailySpends) {
+      if (dateOnly(spend.date) != selectedDay) {
+        continue;
+      }
+      items.add(
+        _DaySpendingItem(
+          time: spend.date,
+          label: spend.note.trim().isEmpty ? 'Daily spend' : spend.note.trim(),
+          amount: spend.amount,
+          sourceLabel: 'Daily',
+          icon: Icons.payments_outlined,
+          isCredit: false,
+        ),
+      );
+    }
+
+    for (final purchase in vm.purchaseHistory) {
+      if (dateOnly(purchase.purchasedAt) != selectedDay) {
+        continue;
+      }
+      items.add(
+        _DaySpendingItem(
+          time: purchase.purchasedAt,
+          label: purchase.goalName,
+          amount: purchase.amount,
+          sourceLabel: 'Purchase',
+          icon: Icons.shopping_bag_outlined,
+          isCredit: false,
+        ),
+      );
+    }
+
+    for (final log in vm.logs) {
+      final isImportedCredit = log.type == EventType.system &&
+          log.amount != null &&
+          log.amount! > 0 &&
+          log.message.toLowerCase().contains('credit imported');
+      if (!isImportedCredit) {
+        continue;
+      }
+
+      final metaTimestamp = (log.meta?['timestamp'] ?? '').toString();
+      final creditTime = DateTime.tryParse(metaTimestamp) ?? log.ts;
+      if (dateOnly(creditTime) != selectedDay) {
+        continue;
+      }
+
+      final source = (log.meta?['source'] ?? '').toString();
+      final sourceLabel = source == 'SMS_IMPORT'
+          ? 'SMS Credit'
+          : source == 'STATEMENT_IMPORT'
+          ? 'Statement Credit'
+          : 'Credit';
+
+      items.add(
+        _DaySpendingItem(
+          time: creditTime,
+          label: log.message,
+          amount: log.amount!,
+          sourceLabel: sourceLabel,
+          icon: Icons.south_west_outlined,
+          isCredit: true,
+        ),
+      );
+    }
+
+    items.sort((a, b) => b.time.compareTo(a.time));
+    final debitTotal = items
+        .where((item) => !item.isCredit)
+        .fold<double>(0, (sum, item) => sum + item.amount);
+    final creditTotal = items
+        .where((item) => item.isCredit)
+        .fold<double>(0, (sum, item) => sum + item.amount);
+    final net = creditTotal - debitTotal;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(DateFormat('dd MMM yyyy').format(selectedDay)),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Debits ${vm.asCurrency(debitTotal)} • Credits ${vm.asCurrency(creditTotal)}',
+                  style: Theme.of(dialogContext).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Net ${net >= 0 ? '+' : '-'}${vm.asCurrency(net.abs())}',
+                  style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                if (items.isEmpty)
+                  const Text('No spendings on this day.')
+                else
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 320),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return ListTile(
+                          dense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                            vertical: 2,
+                          ),
+                          leading: Icon(item.icon, size: 18),
+                          title: Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${item.sourceLabel} • ${item.isCredit ? 'Credit' : 'Debit'}',
+                          ),
+                          trailing: Text(
+                            '${item.isCredit ? '+' : '-'}${vm.asCurrency(item.amount)}',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: item.isCredit
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1261,6 +2065,16 @@ class _PlannerDaily extends StatelessWidget {
                   icon: const Icon(Icons.add_chart_outlined),
                   label: const Text('Log Entry'),
                 ),
+                OutlinedButton.icon(
+                  onPressed: onImportSms,
+                  icon: const Icon(Icons.sms_outlined),
+                  label: const Text('Import SMS'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onImportStatement,
+                  icon: const Icon(Icons.table_view_outlined),
+                  label: const Text('Import Statement'),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -1289,22 +2103,29 @@ class _PlannerDaily extends StatelessWidget {
               ],
             ),
             _DataMetric(
-              label: 'Month Spend',
-              value: vm.asCurrency(toDoubleValue(calendar['monthTotal'])),
+              label: 'Month Net',
+              value: _signedCurrency(toDoubleValue(calendar['monthTotal'])),
               wide: true,
             ),
             const SizedBox(height: AppSpacing.sm),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Sun'),
-                Text('Mon'),
-                Text('Tue'),
-                Text('Wed'),
-                Text('Thu'),
-                Text('Fri'),
-                Text('Sat'),
-              ],
+            GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: _weekLabels.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                childAspectRatio: 2.8,
+                crossAxisSpacing: 5,
+                mainAxisSpacing: 0,
+              ),
+              itemBuilder: (context, index) {
+                return Center(
+                  child: Text(
+                    _weekLabels[index],
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                );
+              },
             ),
             const SizedBox(height: AppSpacing.compact),
             GridView.builder(
@@ -1322,32 +2143,70 @@ class _PlannerDaily extends StatelessWidget {
                 if (cell['type'] == 'empty') {
                   return const SizedBox.shrink();
                 }
-                final total = toDoubleValue(cell['total']);
-                return Container(
-                  padding: const EdgeInsets.all(AppSpacing.compact),
-                  decoration: BoxDecoration(
+                final debit = toDoubleValue(cell['debit']);
+                final credit = toDoubleValue(cell['credit']);
+                final net = toDoubleValue(cell['total']);
+                final hasActivity = debit > 0 || credit > 0;
+                final amountLabel = _signedCurrency(net);
+                final day = (cell['day'] as num).toInt();
+                final tileColor = !hasActivity
+                    ? Theme.of(context).colorScheme.surfaceContainer
+                    : credit > 0 && debit == 0
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : debit > 0 && credit == 0
+                    ? Theme.of(context).colorScheme.secondaryContainer
+                    : Theme.of(context).colorScheme.tertiaryContainer;
+
+                return Material(
+                  color: tileColor,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: InkWell(
                     borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
+                    onTap: () => _showDaySpendingsPopup(
+                      context,
+                      date: DateTime(vm.calendarMonth.year, vm.calendarMonth.month, day),
                     ),
-                    color: total > 0
-                        ? Theme.of(context).colorScheme.secondaryContainer
-                        : Theme.of(context).colorScheme.surfaceContainer,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${cell['day']}',
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                      const Spacer(),
-                      if (total > 0)
-                        Text(
-                          vm.asCurrency(total),
-                          style: Theme.of(context).textTheme.labelSmall,
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpacing.compact),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
                         ),
-                    ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Align(
+                            alignment: Alignment.topLeft,
+                            child: Text(
+                              '$day',
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ),
+                          if (hasActivity)
+                            Align(
+                              alignment: Alignment.bottomLeft,
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    amountLabel,
+                                    maxLines: 1,
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      fontSize: _amountFontSize(amountLabel),
+                                      color: net > 0
+                                          ? Theme.of(context).colorScheme.primary
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 );
               },
@@ -1357,6 +2216,24 @@ class _PlannerDaily extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DaySpendingItem {
+  const _DaySpendingItem({
+    required this.time,
+    required this.label,
+    required this.amount,
+    required this.sourceLabel,
+    required this.icon,
+    required this.isCredit,
+  });
+
+  final DateTime time;
+  final String label;
+  final double amount;
+  final String sourceLabel;
+  final IconData icon;
+  final bool isCredit;
 }
 
 class _PlannerAdvisor extends StatelessWidget {

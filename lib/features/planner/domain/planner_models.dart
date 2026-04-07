@@ -4,6 +4,10 @@ enum GoalPriority { high, medium, low }
 
 enum EventType { system, ai, goal, expense, purchase }
 
+enum SmsImportDirection { debit, credit }
+
+enum SmsImportMode { today, fromDate, newOnly }
+
 class GoalItem {
   GoalItem({
     required this.id,
@@ -158,6 +162,99 @@ class DailySpendEntry {
   }
 }
 
+class SmsImportTransaction {
+  SmsImportTransaction({
+    required this.sourceKey,
+    required this.sender,
+    required this.body,
+    required this.amount,
+    required this.timestamp,
+    required this.direction,
+    this.reference,
+  });
+
+  final String sourceKey;
+  final String sender;
+  final String body;
+  final double amount;
+  final DateTime timestamp;
+  final SmsImportDirection direction;
+  final String? reference;
+
+  static SmsImportTransaction fromMap(Map<String, dynamic> map) {
+    final rawDirection = (map['direction'] ?? 'debit').toString();
+    final direction = rawDirection == SmsImportDirection.credit.name
+        ? SmsImportDirection.credit
+        : SmsImportDirection.debit;
+
+    return SmsImportTransaction(
+      sourceKey: (map['sourceKey'] ?? '').toString(),
+      sender: (map['sender'] ?? '').toString(),
+      body: (map['body'] ?? '').toString(),
+      amount: toDoubleValue(map['amount']).clamp(0, double.infinity).toDouble(),
+      timestamp: DateTime.fromMillisecondsSinceEpoch(
+        toIntValue(map['timestampMs']),
+      ),
+      direction: direction,
+      reference: (map['reference'] ?? '').toString().trim().isEmpty
+          ? null
+          : (map['reference'] ?? '').toString(),
+    );
+  }
+}
+
+class SmsImportBatchResult {
+  SmsImportBatchResult({
+    required this.importedDebits,
+    required this.importedCredits,
+    required this.skippedDuplicate,
+    required this.skippedInvalid,
+  });
+
+  final int importedDebits;
+  final int importedCredits;
+  final int skippedDuplicate;
+  final int skippedInvalid;
+
+  int get importedTotal => importedDebits + importedCredits;
+}
+
+class StatementImportTransaction {
+  StatementImportTransaction({
+    required this.sourceKey,
+    required this.timestamp,
+    required this.amount,
+    required this.direction,
+    required this.description,
+    this.reference,
+    this.sourceFile,
+  });
+
+  final String sourceKey;
+  final DateTime timestamp;
+  final double amount;
+  final SmsImportDirection direction;
+  final String description;
+  final String? reference;
+  final String? sourceFile;
+}
+
+class StatementImportBatchResult {
+  StatementImportBatchResult({
+    required this.importedDebits,
+    required this.importedCredits,
+    required this.skippedDuplicate,
+    required this.skippedInvalid,
+  });
+
+  final int importedDebits;
+  final int importedCredits;
+  final int skippedDuplicate;
+  final int skippedInvalid;
+
+  int get importedTotal => importedDebits + importedCredits;
+}
+
 class EventLog {
   EventLog({
     required this.id,
@@ -244,6 +341,8 @@ class PlannerSnapshot {
     required this.purchaseHistory,
     required this.logs,
     required this.dailySpends,
+    required this.importedSmsKeys,
+    required this.importedStatementKeys,
     required this.salaryInput,
     required this.goalPriority,
   });
@@ -258,6 +357,8 @@ class PlannerSnapshot {
   final List<PurchaseEntry> purchaseHistory;
   final List<EventLog> logs;
   final List<DailySpendEntry> dailySpends;
+  final Set<String> importedSmsKeys;
+  final Set<String> importedStatementKeys;
   final String salaryInput;
   final GoalPriority goalPriority;
 }

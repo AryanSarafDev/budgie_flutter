@@ -33,6 +33,8 @@ class PlannerViewModel extends Cubit<PlannerState> {
   List<PurchaseEntry> purchaseHistory = [];
   List<EventLog> logs = [];
   List<DailySpendEntry> dailySpends = [];
+  Set<String> importedSmsKeys = <String>{};
+  Set<String> importedStatementKeys = <String>{};
 
   bool isHydrated = false;
   bool firebaseReady = FirebaseBootstrap.initialized;
@@ -106,6 +108,10 @@ class PlannerViewModel extends Cubit<PlannerState> {
   }
 
   int get undoDepth => _undoStack.length;
+
+  Set<String> get importedSmsKeysView => Set.unmodifiable(importedSmsKeys);
+  Set<String> get importedStatementKeysView =>
+      Set.unmodifiable(importedStatementKeys);
 
   AllocationResult get allocation =>
       calculateAllocation(effectivePlanningPool, goals);
@@ -308,6 +314,8 @@ class PlannerViewModel extends Cubit<PlannerState> {
       purchaseHistory: [...purchaseHistory],
       logs: [...logs],
       dailySpends: [...dailySpends],
+      importedSmsKeys: {...importedSmsKeys},
+      importedStatementKeys: {...importedStatementKeys},
       salaryInput: salaryCtrl.text,
       goalPriority: goalPriority,
     );
@@ -334,6 +342,8 @@ class PlannerViewModel extends Cubit<PlannerState> {
     purchaseHistory = snapshot.purchaseHistory;
     logs = snapshot.logs;
     dailySpends = snapshot.dailySpends;
+    importedSmsKeys = snapshot.importedSmsKeys;
+    importedStatementKeys = snapshot.importedStatementKeys;
     salaryCtrl.text = snapshot.salaryInput;
     goalPriority = snapshot.goalPriority;
 
@@ -572,6 +582,8 @@ class PlannerViewModel extends Cubit<PlannerState> {
     purchaseHistory = [];
     logs = [];
     dailySpends = [];
+    importedSmsKeys = <String>{};
+    importedStatementKeys = <String>{};
     aiError = '';
     aiResult = null;
     aiRawText = '';
@@ -620,6 +632,161 @@ class PlannerViewModel extends Cubit<PlannerState> {
     return null;
   }
 
+  SmsImportBatchResult importSmsTransactions(
+    List<SmsImportTransaction> transactions,
+  ) {
+    if (transactions.isEmpty) {
+      return SmsImportBatchResult(
+        importedDebits: 0,
+        importedCredits: 0,
+        skippedDuplicate: 0,
+        skippedInvalid: 0,
+      );
+    }
+
+    _pushUndo();
+    var importedDebits = 0;
+    var importedCredits = 0;
+    var skippedDuplicate = 0;
+    var skippedInvalid = 0;
+
+    for (final tx in transactions) {
+      final sourceKey = tx.sourceKey.trim();
+      if (sourceKey.isEmpty) {
+        skippedInvalid += 1;
+        continue;
+      }
+      if (importedSmsKeys.contains(sourceKey)) {
+        skippedDuplicate += 1;
+        continue;
+      }
+      if (tx.amount <= 0) {
+        skippedInvalid += 1;
+        continue;
+      }
+
+      if (tx.direction == SmsImportDirection.debit) {
+        final note = [
+          'SMS UPI debit',
+          if (tx.sender.trim().isNotEmpty) tx.sender.trim(),
+          if ((tx.reference ?? '').trim().isNotEmpty) '#${tx.reference!.trim()}',
+        ].join(' • ');
+
+        final applied = _applyDailySpend(
+          amount: tx.amount,
+          spendDate: tx.timestamp,
+          note: note,
+          source: 'SMS_IMPORT',
+          allowOverspend: true,
+        );
+        if (!applied) {
+          skippedInvalid += 1;
+          continue;
+        }
+        importedDebits += 1;
+      } else {
+        extraSavings = round2(extraSavings + tx.amount);
+        _addLog(
+          EventType.system,
+          'SMS credit imported',
+          amount: tx.amount,
+          meta: {
+            'source': 'SMS_IMPORT',
+            'sender': tx.sender,
+            'reference': tx.reference,
+            'timestamp': tx.timestamp.toIso8601String(),
+          },
+        );
+        importedCredits += 1;
+      }
+
+      importedSmsKeys.add(sourceKey);
+    }
+
+    _save();
+    _emitState();
+
+    return SmsImportBatchResult(
+      importedDebits: importedDebits,
+      importedCredits: importedCredits,
+      skippedDuplicate: skippedDuplicate,
+      skippedInvalid: skippedInvalid,
+    );
+  }
+
+  StatementImportBatchResult importStatementTransactions(
+    List<StatementImportTransaction> transactions,
+  ) {
+    if (transactions.isEmpty) {
+      return StatementImportBatchResult(
+        importedDebits: 0,
+        importedCredits: 0,
+        skippedDuplicate: 0,
+        skippedInvalid: 0,
+      );
+    }
+
+    _pushUndo();
+    var importedDebits = 0;
+    var importedCredits = 0;
+    var skippedDuplicate = 0;
+    var skippedInvalid = 0;
+
+    for (final tx in transactions) {
+      final sourceKey = tx.sourceKey.trim();
+      if (sourceKey.isEmpty || tx.amount <= 0) {
+        skippedInvalid += 1;
+        continue;
+      }
+
+      if (importedStatementKeys.contains(sourceKey)) {
+        skippedDuplicate += 1;
+        continue;
+      }
+
+      if (tx.direction == SmsImportDirection.debit) {
+        final applied = _applyDailySpend(
+          amount: tx.amount,
+          spendDate: tx.timestamp,
+          note: tx.description,
+          source: 'STATEMENT_IMPORT',
+          allowOverspend: true,
+        );
+        if (!applied) {
+          skippedInvalid += 1;
+          continue;
+        }
+        importedDebits += 1;
+      } else {
+        extraSavings = round2(extraSavings + tx.amount);
+        _addLog(
+          EventType.system,
+          'Statement credit imported',
+          amount: tx.amount,
+          meta: {
+            'source': 'STATEMENT_IMPORT',
+            'reference': tx.reference,
+            'timestamp': tx.timestamp.toIso8601String(),
+            'file': tx.sourceFile,
+          },
+        );
+        importedCredits += 1;
+      }
+
+      importedStatementKeys.add(sourceKey);
+    }
+
+    _save();
+    _emitState();
+
+    return StatementImportBatchResult(
+      importedDebits: importedDebits,
+      importedCredits: importedCredits,
+      skippedDuplicate: skippedDuplicate,
+      skippedInvalid: skippedInvalid,
+    );
+  }
+
   void previousCalendarMonth() {
     calendarMonth = DateTime(calendarMonth.year, calendarMonth.month - 1, 1);
     _emitState();
@@ -645,16 +812,18 @@ class PlannerViewModel extends Cubit<PlannerState> {
       0,
     ).day;
 
-    final totalsByDay = <int, double>{};
-    var monthTotal = 0.0;
+    final debitByDay = <int, double>{};
+    final creditByDay = <int, double>{};
+    var monthDebitTotal = 0.0;
+    var monthCreditTotal = 0.0;
 
     for (final spend in dailySpends) {
       if (DateFormat('yyyy-MM').format(spend.date) != monthKey) {
         continue;
       }
       final day = spend.date.day;
-      totalsByDay[day] = round2((totalsByDay[day] ?? 0) + spend.amount);
-      monthTotal = round2(monthTotal + spend.amount);
+      debitByDay[day] = round2((debitByDay[day] ?? 0) + spend.amount);
+      monthDebitTotal = round2(monthDebitTotal + spend.amount);
     }
 
     for (final purchase in purchaseHistory) {
@@ -662,8 +831,28 @@ class PlannerViewModel extends Cubit<PlannerState> {
         continue;
       }
       final day = purchase.purchasedAt.day;
-      totalsByDay[day] = round2((totalsByDay[day] ?? 0) + purchase.amount);
-      monthTotal = round2(monthTotal + purchase.amount);
+      debitByDay[day] = round2((debitByDay[day] ?? 0) + purchase.amount);
+      monthDebitTotal = round2(monthDebitTotal + purchase.amount);
+    }
+
+    for (final log in logs) {
+      final isImportedCredit = log.type == EventType.system &&
+          log.amount != null &&
+          log.amount! > 0 &&
+          log.message.toLowerCase().contains('credit imported');
+      if (!isImportedCredit) {
+        continue;
+      }
+
+      final metaTimestamp = (log.meta?['timestamp'] ?? '').toString();
+      final creditTime = DateTime.tryParse(metaTimestamp) ?? log.ts;
+      if (DateFormat('yyyy-MM').format(creditTime) != monthKey) {
+        continue;
+      }
+
+      final day = creditTime.day;
+      creditByDay[day] = round2((creditByDay[day] ?? 0) + log.amount!);
+      monthCreditTotal = round2(monthCreditTotal + log.amount!);
     }
 
     final cells = <Map<String, dynamic>>[];
@@ -672,16 +861,25 @@ class PlannerViewModel extends Cubit<PlannerState> {
     }
 
     for (var day = 1; day <= daysInMonth; day += 1) {
+      final debit = round2(debitByDay[day] ?? 0);
+      final credit = round2(creditByDay[day] ?? 0);
+      final net = round2(credit - debit);
       cells.add({
         'type': 'day',
         'day': day,
-        'total': round2(totalsByDay[day] ?? 0),
+        'debit': debit,
+        'credit': credit,
+        'total': net,
       });
     }
 
+    final monthNet = round2(monthCreditTotal - monthDebitTotal);
+
     return {
       'monthLabel': DateFormat('MMMM yyyy').format(calendarMonth),
-      'monthTotal': monthTotal,
+      'monthTotal': monthNet,
+      'monthDebitTotal': monthDebitTotal,
+      'monthCreditTotal': monthCreditTotal,
       'cells': cells,
     };
   }
@@ -1146,6 +1344,8 @@ class PlannerViewModel extends Cubit<PlannerState> {
       'dailySpends': dailySpends
           .map((entry) => entry.toJson())
           .toList(growable: false),
+      importedSmsKeysKey: importedSmsKeys.toList(growable: false),
+      importedStatementKeysKey: importedStatementKeys.toList(growable: false),
     };
   }
 
@@ -1179,6 +1379,14 @@ class PlannerViewModel extends Cubit<PlannerState> {
           (entry) => DailySpendEntry.fromJson(Map<String, dynamic>.from(entry)),
         )
         .toList(growable: false);
+    importedSmsKeys = ((payload[importedSmsKeysKey] as List?) ?? [])
+        .map((entry) => entry.toString())
+        .where((entry) => entry.trim().isNotEmpty)
+        .toSet();
+    importedStatementKeys = ((payload[importedStatementKeysKey] as List?) ?? [])
+      .map((entry) => entry.toString())
+      .where((entry) => entry.trim().isNotEmpty)
+      .toSet();
   }
 
   Future<int> _consumeWidgetSpendEvents(SharedPreferences prefs) async {
@@ -1307,9 +1515,10 @@ class PlannerViewModel extends Cubit<PlannerState> {
     required DateTime spendDate,
     required String note,
     required String source,
+    bool allowOverspend = false,
   }) {
     final availableSavingsNow = round2(extraSavings + availableMonthExcess);
-    if (amount > availableSavingsNow + 0.01) {
+    if (!allowOverspend && amount > availableSavingsNow + 0.01) {
       return false;
     }
 
@@ -1324,9 +1533,9 @@ class PlannerViewModel extends Cubit<PlannerState> {
     }
 
     if (remaining > 0) {
-      extraSavings = round2(
-        (extraSavings - remaining).clamp(0, double.infinity),
-      );
+      extraSavings = allowOverspend
+          ? round2(extraSavings - remaining)
+          : round2((extraSavings - remaining).clamp(0, double.infinity));
     }
 
     final trimmedNote = note.trim();
