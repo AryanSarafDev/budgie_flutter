@@ -98,7 +98,7 @@ flutter analyze
 flutter test
 ```
 
-## Contributing
+## Contributing 
 
 - Keep changes focused and well-scoped.
 - Run analyze and tests before opening a PR.
